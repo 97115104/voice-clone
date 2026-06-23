@@ -1,0 +1,13 @@
+{
+  "name": "voice-clone",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Chatterbox voice cloning tool",
+  "type": "module",
+  "scripts": {
+    "attest": "node scripts/attest.mjs"
+  },
+  "devDependencies": {
+    "attest-client": "^3.0.0"
+  }
+}

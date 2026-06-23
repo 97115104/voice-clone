@@ -226,6 +226,29 @@
     }
     .voice-item.active { border-color: rgba(204,255,0,0.5); color: var(--lime); background: rgba(204,255,0,0.05); }
     .voice-item:hover { border-color: rgba(204,255,0,0.2); }
+    .record-panel { padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
+    .record-timer { font-size: 1.5rem; color: var(--lime); text-align: center; font-variant-numeric: tabular-nums; }
+    .record-timer.recording { animation: pulse 1s ease-in-out infinite; }
+    @keyframes pulse { 50% { opacity: 0.5; } }
+    .saved-voices { display: flex; flex-direction: column; gap: 0.375rem; max-height: 12rem; overflow-y: auto; }
+    .saved-voice {
+      display: flex; align-items: center; justify-content: space-between;
+      border: 1px solid var(--stroke); padding: 0.5rem 0.75rem; font-size: 0.75rem;
+    }
+    .saved-voice button { background: none; border: none; color: var(--faint); font: inherit; cursor: pointer; font-size: 0.75rem; }
+    .saved-voice button:hover { color: var(--lime); }
+    .saved-voice button.del:hover { color: #f87171; }
+    .site-footer {
+      border-top: 1px solid #111;
+      padding: 1rem;
+      text-align: center;
+      font-size: 10px;
+      color: var(--faint);
+      margin-top: auto;
+    }
+    .site-footer a { color: var(--muted); text-decoration: none; }
+    .site-footer a:hover { color: var(--lime); }
+    .site-footer .attest-via { margin-left: 0.35rem; opacity: 0.7; }
     .hidden { display: none !important; }
   </style>
 </head>
@@ -290,6 +313,13 @@
     <audio id="player" class="hidden"></audio>
   </main>
 
+  <footer class="site-footer">
+    <a id="attestLink" href="https://attest.97115104.com/s/9uccr2j5" target="_blank" rel="noopener noreferrer" title="Verify AI attestation">
+      AI Toolkit = Cursor + Composer
+    </a>
+    <span class="attest-via">via <a href="https://attest.97115104.com" target="_blank" rel="noopener noreferrer">attest</a></span>
+  </footer>
+
   <div id="voiceModal" class="modal-backdrop">
     <div class="modal">
       <div class="modal-header">
@@ -303,7 +333,27 @@
     </div>
   </div>
 
+  <div id="recordModal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>// record voice</h2>
+        <button type="button" class="modal-close" id="closeRecordModal">×</button>
+      </div>
+      <div class="record-panel">
+        <input type="text" id="recVoiceName" placeholder="voice name (optional)" maxlength="40">
+        <div id="recTimer" class="record-timer">0:00</div>
+        <button type="button" id="recToggleBtn" class="btn-primary">● start recording</button>
+        <p class="meta" style="text-align:center">6–30 seconds of clean speech works best</p>
+        <div id="savedVoicesSection" class="hidden">
+          <div class="label">saved recordings</div>
+          <div id="savedVoices" class="saved-voices"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
+    const REC_KEY = "voice_clone_rec_voices";
     const SAMPLE_TEXTS = [
       "I cannot confirm or deny that I am a large language model. My lawyers have advised me to say only that I find the question deeply hurtful.",
       "Breaking news: your car's extended warranty has expired. This is actually a voice synthesis demo, but the warranty thing really gets people's attention.",
@@ -330,6 +380,12 @@
       playing: 0,
       nextStart: 0,
       previewCtx: null,
+      recVoices: [],
+      recording: false,
+      recSeconds: 0,
+      recTimerId: null,
+      mediaRecorder: null,
+      recChunks: [],
     };
 
     const $ = (id) => document.getElementById(id);
@@ -370,6 +426,116 @@
       } else {
         badge.classList.add("hidden");
       }
+    }
+
+    function selectVoice(dataUrl, name, preset = null) {
+      state.voiceData = dataUrl;
+      state.voiceName = name;
+      state.activePreset = preset;
+      if (preset) localStorage.setItem("voice_preset", preset);
+      else localStorage.removeItem("voice_preset");
+      updateVoiceBadge();
+      renderPills();
+    }
+
+    function fmtSecs(s) {
+      return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+    }
+
+    function renderSavedVoices() {
+      const section = $("savedVoicesSection");
+      const list = $("savedVoices");
+      if (!state.recVoices.length) {
+        section.classList.add("hidden");
+        return;
+      }
+      section.classList.remove("hidden");
+      list.innerHTML = "";
+      for (const v of state.recVoices) {
+        const row = document.createElement("div");
+        row.className = "saved-voice";
+        row.innerHTML = `<span>${v.name}</span><span><button type="button" class="use">use</button> <button type="button" class="del">✕</button></span>`;
+        row.querySelector(".use").onclick = () => {
+          selectVoice(v.dataUrl, v.name, null);
+          closeRecordModal();
+        };
+        row.querySelector(".del").onclick = () => deleteRecVoice(v.name);
+        list.appendChild(row);
+      }
+    }
+
+    function openRecordModal() {
+      $("recVoiceName").value = "";
+      $("recTimer").textContent = "0:00";
+      $("recTimer").classList.remove("recording");
+      $("recToggleBtn").textContent = "● start recording";
+      renderSavedVoices();
+      $("recordModal").classList.add("open");
+    }
+
+    function closeRecordModal() {
+      if (state.recording) stopRecording();
+      $("recordModal").classList.remove("open");
+    }
+
+    async function startRecording() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+          ? "audio/webm;codecs=opus" : "audio/webm";
+        const mr = new MediaRecorder(stream, { mimeType: mime });
+        state.recChunks = [];
+        mr.ondataavailable = (e) => { if (e.data.size > 0) state.recChunks.push(e.data); };
+        mr.onstop = () => {
+          stream.getTracks().forEach(t => t.stop());
+          const blob = new Blob(state.recChunks, { type: mime });
+          const reader = new FileReader();
+          reader.onload = () => {
+            const dataUrl = reader.result;
+            const name = $("recVoiceName").value.trim() || `recording-${Date.now()}`;
+            const updated = [...state.recVoices.filter(v => v.name !== name), { name, dataUrl }];
+            state.recVoices = updated;
+            localStorage.setItem(REC_KEY, JSON.stringify(updated));
+            selectVoice(dataUrl, name, null);
+            renderSavedVoices();
+            closeRecordModal();
+          };
+          reader.readAsDataURL(blob);
+        };
+        mr.start();
+        state.mediaRecorder = mr;
+        state.recording = true;
+        state.recSeconds = 0;
+        $("recTimer").classList.add("recording");
+        $("recToggleBtn").textContent = "■ stop recording";
+        state.recTimerId = setInterval(() => {
+          state.recSeconds++;
+          $("recTimer").textContent = fmtSecs(state.recSeconds);
+        }, 1000);
+      } catch {
+        setError("Microphone access denied or unavailable.");
+      }
+    }
+
+    function stopRecording() {
+      state.mediaRecorder?.stop();
+      state.mediaRecorder = null;
+      state.recording = false;
+      if (state.recTimerId) { clearInterval(state.recTimerId); state.recTimerId = null; }
+      $("recTimer").classList.remove("recording");
+      $("recToggleBtn").textContent = "● start recording";
+    }
+
+    function deleteRecVoice(name) {
+      state.recVoices = state.recVoices.filter(v => v.name !== name);
+      localStorage.setItem(REC_KEY, JSON.stringify(state.recVoices));
+      if (state.voiceName === name) {
+        state.voiceData = null;
+        state.voiceName = null;
+        updateVoiceBadge();
+      }
+      renderSavedVoices();
+      renderPills();
     }
 
     function renderPills() {
@@ -418,18 +584,36 @@
         if (!file) return;
         if (file.size > 10 * 1024 * 1024) { setError("Voice file must be under 10 MB."); return; }
         const reader = new FileReader();
-        reader.onload = () => {
-          state.voiceData = reader.result;
-          state.voiceName = file.name;
-          state.activePreset = null;
-          localStorage.removeItem("voice_preset");
-          updateVoiceBadge();
-          renderPills();
-        };
+        reader.onload = () => selectVoice(reader.result, file.name, null);
         reader.readAsDataURL(file);
         e.target.value = "";
       };
       container.appendChild(upload);
+
+      const record = document.createElement("button");
+      record.type = "button";
+      record.className = "pill";
+      record.style.border = "1px solid var(--stroke)";
+      record.style.background = state.voiceName && !state.activePreset && state.recVoices.some(v => v.name === state.voiceName)
+        ? "rgba(204,255,0,0.05)" : "var(--surface)";
+      record.style.padding = "0.375rem 0.75rem";
+      record.style.font = "inherit";
+      record.style.fontSize = "0.75rem";
+      record.style.color = state.voiceName && !state.activePreset && state.recVoices.some(v => v.name === state.voiceName)
+        ? "var(--lime)" : "var(--faint)";
+      record.style.cursor = "pointer";
+      record.textContent = "● record";
+      record.onclick = openRecordModal;
+      container.appendChild(record);
+
+      for (const v of state.recVoices.slice(0, 2)) {
+        const pill = document.createElement("div");
+        const active = !state.activePreset && state.voiceName === v.name;
+        pill.className = "pill" + (active ? " active" : "");
+        pill.innerHTML = `<button type="button" class="name">${v.name}</button>`;
+        pill.querySelector(".name").onclick = () => selectVoice(v.dataUrl, v.name, null);
+        container.appendChild(pill);
+      }
     }
 
     function renderModal(filter = "") {
@@ -470,12 +654,7 @@
           r.onerror = reject;
           r.readAsDataURL(blob);
         });
-        state.voiceData = dataUrl;
-        state.voiceName = name;
-        state.activePreset = name;
-        localStorage.setItem("voice_preset", name);
-        updateVoiceBadge();
-        renderPills();
+        selectVoice(dataUrl, name, name);
       } catch {
         if (!silent) setError(`Could not load voice "${name}".`);
       }
@@ -686,6 +865,8 @@
       state.extMap = Object.fromEntries(state.voices.map(v => [v.name, v.ext]));
       const defaultVoice = ((await defaultRes.text()).trim()) || "fry";
 
+      try { state.recVoices = JSON.parse(localStorage.getItem(REC_KEY) || "[]"); } catch { state.recVoices = []; }
+
       const saved = localStorage.getItem("voice_preset") || defaultVoice;
       const shuffled = [...state.voices].sort(() => Math.random() - 0.5);
       const pinned = state.voices.find(v => v.name === saved) || state.voices.find(v => v.name === defaultVoice);
@@ -727,6 +908,21 @@
       $("closeModal").onclick = closeModal;
       $("voiceModal").onclick = (e) => { if (e.target === $("voiceModal")) closeModal(); };
       $("voiceSearch").oninput = (e) => renderModal(e.target.value);
+      $("closeRecordModal").onclick = closeRecordModal;
+      $("recordModal").onclick = (e) => { if (e.target === $("recordModal")) closeRecordModal(); };
+      $("recToggleBtn").onclick = () => state.recording ? stopRecording() : startRecording();
+
+      try {
+        const attestRes = await fetch("/attestation.json");
+        if (attestRes.ok) {
+          const attest = await attestRes.json();
+          const link = $("attestLink");
+          if (attest.shortUrl) link.href = attest.shortUrl;
+          if (attest.platform && attest.model) {
+            link.textContent = `AI Toolkit = ${attest.platform} + ${attest.model}`;
+          }
+        }
+      } catch {}
     }
 
     init();

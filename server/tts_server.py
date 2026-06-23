@@ -11,14 +11,14 @@ Quality knobs (per-request or env defaults):
 Install:
   pip install -r requirements.txt
 """
-import base64, hashlib, io, json, os, re, subprocess, tempfile, time
+import base64, hashlib, io, json, os, re, subprocess, tempfile, threading, time
 from pathlib import Path
 
 import soundfile as sf
 import torch
 from chatterbox.tts import ChatterboxTTS
-from fastapi import FastAPI
-from fastapi.responses import FileResponse, StreamingResponse, Response
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse, StreamingResponse, Response, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -28,23 +28,59 @@ WEB_DIR = ROOT.parent / "web"
 
 app = FastAPI(title="Voice Clone", version="1.0.0")
 
-DEVICE = os.environ.get("TTS_DEVICE", "cuda" if torch.cuda.is_available() else "cpu")
+_ready = threading.Event()
+_load_error: str | None = None
+tts: ChatterboxTTS | None = None
+SAMPLE_RATE: int | None = None
+
+
+def _default_device() -> str:
+    if env := os.environ.get("TTS_DEVICE"):
+        return env
+    if torch.cuda.is_available():
+        return "cuda"
+    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
+
+
+DEVICE = _default_device()
 EXAGGERATION = float(os.environ.get("CB_EXAGGERATION", "0.5"))
 CFG_WEIGHT    = float(os.environ.get("CB_CFG_WEIGHT",    "0.5"))
 TEMPERATURE   = float(os.environ.get("CB_TEMPERATURE",   "0.8"))
 
-print(f"[chatterbox] loading model on {DEVICE}...", flush=True)
-_t0 = time.time()
-tts = ChatterboxTTS.from_pretrained(device=DEVICE)
-SAMPLE_RATE = tts.sr
-print(f"[chatterbox] model loaded in {time.time()-_t0:.1f}s  sr={SAMPLE_RATE}", flush=True)
+_LOAD_MESSAGE = (
+    "Downloading and loading the voice model. "
+    "First start can take 5–15 minutes on CPU."
+)
 
-# Warmup — eliminates cold-start latency on the first real request.
-_WARMUP_WAV = VOICES_DIR / "warmup.wav"
-if _WARMUP_WAV.exists():
-    print("[chatterbox] warming up...", flush=True)
-    tts.generate("Warmup.", audio_prompt_path=str(_WARMUP_WAV))
-    print("[chatterbox] warmup complete", flush=True)
+
+def _require_ready() -> None:
+    if _load_error:
+        raise HTTPException(status_code=500, detail=_load_error)
+    if not _ready.is_set():
+        raise HTTPException(status_code=503, detail="Model still loading")
+
+
+def _load_model() -> None:
+    global tts, SAMPLE_RATE, _load_error
+    try:
+        print(f"[chatterbox] loading model on {DEVICE}...", flush=True)
+        _t0 = time.time()
+        tts = ChatterboxTTS.from_pretrained(device=DEVICE)
+        SAMPLE_RATE = tts.sr
+        print(f"[chatterbox] model loaded in {time.time()-_t0:.1f}s  sr={SAMPLE_RATE}", flush=True)
+
+        warmup_wav = VOICES_DIR / "warmup.wav"
+        if warmup_wav.exists():
+            print("[chatterbox] warming up...", flush=True)
+            tts.generate("Warmup.", audio_prompt_path=str(warmup_wav))
+            print("[chatterbox] warmup complete", flush=True)
+
+        _ready.set()
+    except Exception as exc:
+        _load_error = str(exc)
+        print(f"[chatterbox] model load failed: {exc}", flush=True)
 
 
 class TTSRequest(BaseModel):
@@ -59,11 +95,37 @@ class TTSRequest(BaseModel):
 
 
 def _decode_voice(data_url: str) -> str:
-    b64 = data_url.split(",", 1)[1] if "," in data_url else data_url
-    tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-    tmp.write(base64.b64decode(b64))
-    tmp.close()
-    return tmp.name
+    header, b64 = (data_url.split(",", 1) if "," in data_url else ("", data_url))
+    mime = "audio/wav"
+    if header.startswith("data:"):
+        mime = header[5:].split(";")[0].lower()
+
+    raw = base64.b64decode(b64)
+    ext_map = {
+        "audio/wav": ".wav", "audio/x-wav": ".wav", "audio/wave": ".wav",
+        "audio/mpeg": ".mp3", "audio/mp3": ".mp3",
+        "audio/webm": ".webm", "audio/ogg": ".ogg", "audio/mp4": ".m4a",
+    }
+    ext = ext_map.get(mime, ".wav")
+
+    tmp_in = tempfile.NamedTemporaryFile(suffix=ext, delete=False)
+    tmp_in.write(raw)
+    tmp_in.close()
+
+    if ext == ".wav":
+        return tmp_in.name
+
+    tmp_out = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+    tmp_out.close()
+    result = subprocess.run(
+        ["ffmpeg", "-y", "-i", tmp_in.name, "-ar", "24000", "-ac", "1", tmp_out.name, "-loglevel", "error"],
+        capture_output=True,
+    )
+    os.unlink(tmp_in.name)
+    if result.returncode != 0:
+        os.unlink(tmp_out.name)
+        raise RuntimeError(f"ffmpeg convert failed: {result.stderr.decode()}")
+    return tmp_out.name
 
 
 # Voice embedding cache: md5(voice_bytes:exaggeration) → tts.conds
@@ -142,6 +204,7 @@ def _split_sentences(text: str) -> list[str]:
 
 @app.post("/tts/synthesize")
 async def synthesize(req: TTSRequest):
+    _require_ready()
     _prepare_conditionals_cached(req.voice, req.exaggeration)
     wav, sr = _infer(req.text, req.exaggeration, req.cfg_weight, req.temperature)
     audio_bytes = _tensor_to_bytes(wav, sr, req.format)
@@ -154,6 +217,7 @@ async def stream(req: TTSRequest):
     """Sentence-streaming TTS: synthesizes sentence-by-sentence and returns
     SSE events so clients can start playing the first sentence immediately
     instead of waiting for the full response to be synthesized."""
+    _require_ready()
     sentences = _split_sentences(req.text)
     total = len(sentences)
 
@@ -178,6 +242,20 @@ async def stream(req: TTSRequest):
 
 @app.get("/health")
 async def health():
+    if _load_error:
+        return JSONResponse(
+            {"status": "error", "error": _load_error, "device": DEVICE},
+            status_code=500,
+        )
+    if not _ready.is_set():
+        return JSONResponse(
+            {
+                "status": "loading",
+                "device": DEVICE,
+                "message": _LOAD_MESSAGE,
+            },
+            status_code=503,
+        )
     return {
         "status": "ok",
         "backend": "chatterbox",
@@ -195,6 +273,7 @@ _VOICE_EXCLUDE = {"warmup.wav", "default.txt", "README.md"}
 
 @app.get("/api/voices")
 async def list_voices():
+    _require_ready()
     voices = []
     for path in sorted(VOICES_DIR.iterdir()):
         if path.name in _VOICE_EXCLUDE or path.suffix.lower() not in {".mp3", ".wav"}:
@@ -211,8 +290,25 @@ async def default_voice():
     return Response(content="fry", media_type="text/plain")
 
 
+@app.get("/attestation.json")
+async def attestation():
+    path = WEB_DIR / "attestation.json"
+    if path.exists():
+        return FileResponse(path, media_type="application/json")
+    return Response(content="{}", media_type="application/json")
+
+
 @app.get("/")
 async def index():
+    if not _ready.is_set():
+        loading_path = WEB_DIR / "loading.html"
+        if loading_path.exists():
+            return FileResponse(loading_path)
+        return Response(
+            content=_LOAD_MESSAGE,
+            media_type="text/plain",
+            status_code=503,
+        )
     index_path = WEB_DIR / "index.html"
     if index_path.exists():
         return FileResponse(index_path)
@@ -226,4 +322,5 @@ if VOICES_DIR.exists():
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8004))
+    threading.Thread(target=_load_model, name="model-loader", daemon=True).start()
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

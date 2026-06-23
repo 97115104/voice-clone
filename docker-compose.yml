@@ -1,0 +1,22 @@
+services:
+  voice-clone:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        TORCH_INDEX: https://download.pytorch.org/whl/cpu
+    ports:
+      - "${PORT:-8004}:8004"
+    environment:
+      PORT: "8004"
+      TTS_DEVICE: "${TTS_DEVICE:-cpu}"
+      HF_HOME: /data/huggingface
+      CB_EXAGGERATION: "${CB_EXAGGERATION:-0.5}"
+      CB_CFG_WEIGHT: "${CB_CFG_WEIGHT:-0.5}"
+      CB_TEMPERATURE: "${CB_TEMPERATURE:-0.8}"
+    volumes:
+      - huggingface-cache:/data/huggingface
+    restart: unless-stopped
+
+volumes:
+  huggingface-cache:

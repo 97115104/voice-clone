@@ -1,0 +1,12 @@
+.git
+.gitignore
+.venv
+.runtime
+__pycache__
+*.pyc
+*.pyo
+.DS_Store
+*.md
+!server/voices/README.md
+scripts/
+install
