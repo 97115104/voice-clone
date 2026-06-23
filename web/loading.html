@@ -11,6 +11,7 @@
       --ink: #ccc;
       --muted: #888;
       --faint: #444;
+      --stroke: #1a1a1a;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -39,7 +40,7 @@
       width: 2.5rem;
       height: 2.5rem;
       margin: 0 auto 1.5rem;
-      border: 2px solid #1a1a1a;
+      border: 2px solid var(--stroke);
       border-top-color: var(--lime);
       border-radius: 50%;
       animation: spin 0.9s linear infinite;
@@ -57,6 +58,37 @@
       color: var(--muted);
       margin-bottom: 1.25rem;
     }
+    .progress-wrap {
+      margin-bottom: 1rem;
+      text-align: left;
+    }
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+    .progress-bar {
+      height: 0.375rem;
+      background: var(--stroke);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--lime);
+      border-radius: 999px;
+      transition: width 0.35s ease;
+    }
+    .progress-detail {
+      margin-top: 0.5rem;
+      font-size: 0.6875rem;
+      color: var(--faint);
+      word-break: break-word;
+    }
     .detail {
       font-size: 0.75rem;
       color: var(--faint);
@@ -66,6 +98,7 @@
     .error .spinner { display: none; }
     .error h1 { color: #ef4444; }
     .error .message { color: #f87171; }
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
@@ -76,15 +109,72 @@
     <p class="message" id="message">
       First start downloads the model from Hugging Face. On CPU this can take 5–15 minutes.
     </p>
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-meta">
+        <span id="phaseLabel">Starting…</span>
+        <span id="percentLabel">0%</span>
+      </div>
+      <div class="progress-bar" aria-hidden="true">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div class="progress-detail" id="progressDetail"></div>
+    </div>
     <p class="detail" id="detail">Device: <strong id="device">…</strong></p>
   </div>
   <script>
     const panel = document.getElementById("panel");
     const title = document.getElementById("title");
     const message = document.getElementById("message");
-    const detail = document.getElementById("detail");
     const deviceEl = document.getElementById("device");
     const spinner = document.getElementById("spinner");
+    const phaseLabel = document.getElementById("phaseLabel");
+    const percentLabel = document.getElementById("percentLabel");
+    const progressFill = document.getElementById("progressFill");
+    const progressDetail = document.getElementById("progressDetail");
+
+    function formatBytes(n) {
+      if (!n) return "0 B";
+      const units = ["B", "KB", "MB", "GB"];
+      let value = n;
+      let unit = 0;
+      while (value >= 1024 && unit < units.length - 1) {
+        value /= 1024;
+        unit++;
+      }
+      return `${value.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`;
+    }
+
+    function phaseText(phase) {
+      switch (phase) {
+        case "downloading": return "Downloading model files";
+        case "loading": return "Loading weights into memory";
+        case "warming up": return "Warming up model";
+        case "ready": return "Ready";
+        default: return "Preparing";
+      }
+    }
+
+    function updateProgress(progress) {
+      if (!progress) return;
+      const pct = Math.max(0, Math.min(100, progress.percent || 0));
+      percentLabel.textContent = `${pct}%`;
+      progressFill.style.width = `${pct}%`;
+      phaseLabel.textContent = phaseText(progress.phase);
+
+      const parts = [];
+      if (progress.phase === "downloading") {
+        if (progress.files_total) {
+          parts.push(`File ${Math.min(progress.files_done + 1, progress.files_total)} of ${progress.files_total}`);
+        }
+        if (progress.current_file) parts.push(progress.current_file);
+        if (progress.bytes_total) {
+          parts.push(`${formatBytes(progress.bytes_done)} / ${formatBytes(progress.bytes_total)}`);
+        }
+      } else if (progress.current_file) {
+        parts.push(progress.current_file);
+      }
+      progressDetail.textContent = parts.join(" · ");
+    }
 
     function showError(text) {
       panel.classList.add("error");
@@ -100,9 +190,11 @@
 
         if (data.device) deviceEl.textContent = data.device;
         if (data.message) message.textContent = data.message;
+        if (data.progress) updateProgress(data.progress);
 
         if (res.ok && data.status === "ok") {
           title.textContent = "Ready — opening app…";
+          updateProgress({ phase: "ready", percent: 100 });
           window.location.replace("/");
           return;
         }
@@ -114,7 +206,7 @@
       } catch {
         // Server not up yet — keep waiting
       }
-      setTimeout(poll, 2000);
+      setTimeout(poll, 1000);
     }
 
     poll();

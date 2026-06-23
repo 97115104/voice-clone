@@ -20,7 +20,9 @@ from chatterbox.tts import ChatterboxTTS
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse, Response, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from huggingface_hub import HfApi, hf_hub_download
 from pydantic import BaseModel
+from tqdm.auto import tqdm
 
 ROOT = Path(__file__).resolve().parent
 VOICES_DIR = ROOT / "voices"
@@ -54,6 +56,105 @@ _LOAD_MESSAGE = (
     "First start can take 5–15 minutes on CPU."
 )
 
+HF_REPO_ID = "ResembleAI/chatterbox"
+MODEL_FILES = [
+    "ve.safetensors",
+    "t3_cfg.safetensors",
+    "s3gen.safetensors",
+    "tokenizer.json",
+    "conds.pt",
+]
+
+_progress_lock = threading.Lock()
+_load_progress: dict = {
+    "phase": "starting",
+    "current_file": "",
+    "files_done": 0,
+    "files_total": len(MODEL_FILES),
+    "bytes_done": 0,
+    "bytes_total": 0,
+    "percent": 0,
+}
+
+
+def _set_progress(**kwargs) -> None:
+    with _progress_lock:
+        _load_progress.update(kwargs)
+        total = _load_progress["bytes_total"]
+        if total > 0:
+            _load_progress["percent"] = min(
+                99, round(100 * _load_progress["bytes_done"] / total)
+            )
+
+
+def _progress_snapshot() -> dict:
+    with _progress_lock:
+        return dict(_load_progress)
+
+
+def _model_file_sizes() -> dict[str, int]:
+    try:
+        infos = HfApi().get_paths_info(HF_REPO_ID, paths=MODEL_FILES, repo_type="model")
+        return {info.path: info.size for info in infos if info.size}
+    except Exception:
+        return {}
+
+
+def _make_download_tqdm(completed_bytes: int, total_bytes: int, file_name: str, file_count: int):
+    base = tqdm
+
+    class DownloadTqdm(base):
+        def update(self, n=1):
+            result = super().update(n)
+            if total_bytes > 0:
+                _set_progress(
+                    phase="downloading",
+                    current_file=file_name,
+                    bytes_done=completed_bytes + self.n,
+                    percent=min(99, round(100 * (completed_bytes + self.n) / total_bytes)),
+                )
+            else:
+                file_frac = (self.n / self.total) if self.total else 1.0
+                overall = ((file_count - 1) + file_frac) / len(MODEL_FILES)
+                _set_progress(
+                    phase="downloading",
+                    current_file=file_name,
+                    files_done=file_count - 1,
+                    percent=min(99, round(100 * overall)),
+                )
+            return result
+
+    return DownloadTqdm
+
+
+def _download_model_files() -> Path:
+    sizes = _model_file_sizes()
+    total_bytes = sum(sizes.get(name, 0) for name in MODEL_FILES)
+    _set_progress(
+        phase="downloading",
+        files_total=len(MODEL_FILES),
+        bytes_total=total_bytes,
+        bytes_done=0,
+        percent=0,
+    )
+
+    completed_bytes = 0
+    local_dir: Path | None = None
+    for index, filename in enumerate(MODEL_FILES, start=1):
+        _set_progress(current_file=filename, files_done=index - 1)
+        tqdm_class = _make_download_tqdm(completed_bytes, total_bytes, filename, index)
+        local_path = hf_hub_download(
+            repo_id=HF_REPO_ID,
+            filename=filename,
+            tqdm_class=tqdm_class,
+        )
+        local_dir = Path(local_path).parent
+        completed_bytes += sizes.get(filename, 0)
+        _set_progress(files_done=index, bytes_done=completed_bytes)
+
+    assert local_dir is not None
+    return local_dir
+
 
 def _require_ready() -> None:
     if _load_error:
@@ -67,16 +168,20 @@ def _load_model() -> None:
     try:
         print(f"[chatterbox] loading model on {DEVICE}...", flush=True)
         _t0 = time.time()
-        tts = ChatterboxTTS.from_pretrained(device=DEVICE)
+        model_dir = _download_model_files()
+        _set_progress(phase="loading", current_file="weights", percent=99)
+        tts = ChatterboxTTS.from_local(model_dir, DEVICE)
         SAMPLE_RATE = tts.sr
         print(f"[chatterbox] model loaded in {time.time()-_t0:.1f}s  sr={SAMPLE_RATE}", flush=True)
 
         warmup_wav = VOICES_DIR / "warmup.wav"
         if warmup_wav.exists():
+            _set_progress(phase="warming up", current_file="warmup", percent=99)
             print("[chatterbox] warming up...", flush=True)
             tts.generate("Warmup.", audio_prompt_path=str(warmup_wav))
             print("[chatterbox] warmup complete", flush=True)
 
+        _set_progress(phase="ready", percent=100)
         _ready.set()
     except Exception as exc:
         _load_error = str(exc)
@@ -248,11 +353,13 @@ async def health():
             status_code=500,
         )
     if not _ready.is_set():
+        progress = _progress_snapshot()
         return JSONResponse(
             {
                 "status": "loading",
                 "device": DEVICE,
                 "message": _LOAD_MESSAGE,
+                "progress": progress,
             },
             status_code=503,
         )

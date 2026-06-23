@@ -1,14 +1,32 @@
 # Voice Clone
 
-Standalone voice cloning tool powered by [Chatterbox](https://github.com/resemble-ai/chatterbox).
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+Free and open source voice cloning tool powered by [Chatterbox](https://github.com/resemble-ai/chatterbox). Use it, fork it, and modify it under the [MIT License](LICENSE).
 
 ## What it does
 
 - Clone any voice from a short reference clip (6–30 seconds of clean speech works best)
 - Record your own voice from the browser mic
+- **Download recordings** as audio files and re-upload them later
 - 28 preset celebrity/character voices included
 - Sentence-by-sentence streaming synthesis with live playback
-- Download the full output as WAV
+- Download synthesized output as WAV
+
+### Saving a recording
+
+1. Click **● record**, speak for 6–30 seconds, then stop.
+2. Download the file:
+   - Click **↓** on the recording pill in the voice row, or
+   - Click **↓ save** next to `using <name>` when that recording is active, or
+   - Open **● record** again → **saved recordings** → **↓** on the row.
+3. Reuse later with **↑ upload** on the main screen.
+
+Recordings are stored in your browser (`localStorage`) until you delete them; downloading gives you a portable copy.
+
+## License
+
+This project is [MIT licensed](LICENSE) — free for personal and commercial use. Preset voice clips are for demonstration; you are responsible for how you use voice cloning.
 
 ## AI attestation
 

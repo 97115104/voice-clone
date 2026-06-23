@@ -171,6 +171,18 @@
       margin-top: 0.5rem;
     }
     .voice-badge span { color: var(--lime); }
+    .voice-badge .voice-dl {
+      margin-left: 0.5rem;
+      background: none;
+      border: none;
+      color: var(--faint);
+      font: inherit;
+      font-size: 10px;
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .voice-badge .voice-dl:hover { color: var(--lime); }
     .modal-backdrop {
       position: fixed;
       inset: 0;
@@ -238,6 +250,12 @@
     .saved-voice button { background: none; border: none; color: var(--faint); font: inherit; cursor: pointer; font-size: 0.75rem; }
     .saved-voice button:hover { color: var(--lime); }
     .saved-voice button.del:hover { color: #f87171; }
+    .saved-voices-hint {
+      font-size: 0.6875rem;
+      color: var(--faint);
+      text-align: center;
+      margin-top: 0.25rem;
+    }
     .site-footer {
       border-top: 1px solid #111;
       padding: 1rem;
@@ -268,7 +286,10 @@
     <div class="section">
       <div class="label">voice</div>
       <div id="voicePills" class="pills"></div>
-      <div id="voiceBadge" class="voice-badge hidden">using <span id="voiceName"></span></div>
+      <div id="voiceBadge" class="voice-badge hidden">
+        using <span id="voiceName"></span>
+        <button type="button" id="downloadRecBadge" class="voice-dl hidden" title="Download recording">↓ save</button>
+      </div>
     </div>
 
     <div class="waveform"><canvas id="waveform"></canvas></div>
@@ -347,6 +368,7 @@
         <div id="savedVoicesSection" class="hidden">
           <div class="label">saved recordings</div>
           <div id="savedVoices" class="saved-voices"></div>
+          <p class="saved-voices-hint">Download a recording to reuse it later via ↑ upload</p>
         </div>
       </div>
     </div>
@@ -420,11 +442,21 @@
 
     function updateVoiceBadge() {
       const badge = $("voiceBadge");
+      const dl = $("downloadRecBadge");
       if (state.voiceName) {
         $("voiceName").textContent = state.voiceName;
         badge.classList.remove("hidden");
+        const rec = state.recVoices.find(v => v.name === state.voiceName);
+        if (rec && !state.activePreset) {
+          dl.classList.remove("hidden");
+          dl.onclick = () => downloadRecVoice(rec);
+        } else {
+          dl.classList.add("hidden");
+          dl.onclick = null;
+        }
       } else {
         badge.classList.add("hidden");
+        dl.classList.add("hidden");
       }
     }
 
@@ -442,6 +474,21 @@
       return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
     }
 
+    function downloadRecVoice(v) {
+      const mime = v.dataUrl.match(/^data:([^;,]+)/)?.[1] || "audio/webm";
+      const ext = mime.includes("wav") ? "wav"
+        : (mime.includes("mpeg") || mime.includes("mp3")) ? "mp3"
+        : mime.includes("ogg") ? "ogg"
+        : "webm";
+      const safeName = v.name.replace(/[^\w.-]+/g, "_") || "recording";
+      const a = document.createElement("a");
+      a.href = v.dataUrl;
+      a.download = `${safeName}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
     function renderSavedVoices() {
       const section = $("savedVoicesSection");
       const list = $("savedVoices");
@@ -454,11 +501,12 @@
       for (const v of state.recVoices) {
         const row = document.createElement("div");
         row.className = "saved-voice";
-        row.innerHTML = `<span>${v.name}</span><span><button type="button" class="use">use</button> <button type="button" class="del">✕</button></span>`;
+        row.innerHTML = `<span>${v.name}</span><span><button type="button" class="use">use</button> <button type="button" class="dl" title="Download">↓</button> <button type="button" class="del">✕</button></span>`;
         row.querySelector(".use").onclick = () => {
           selectVoice(v.dataUrl, v.name, null);
           closeRecordModal();
         };
+        row.querySelector(".dl").onclick = () => downloadRecVoice(v);
         row.querySelector(".del").onclick = () => deleteRecVoice(v.name);
         list.appendChild(row);
       }
@@ -610,8 +658,9 @@
         const pill = document.createElement("div");
         const active = !state.activePreset && state.voiceName === v.name;
         pill.className = "pill" + (active ? " active" : "");
-        pill.innerHTML = `<button type="button" class="name">${v.name}</button>`;
+        pill.innerHTML = `<button type="button" class="name">${v.name}</button><button type="button" class="preview" title="Download recording">↓</button>`;
         pill.querySelector(".name").onclick = () => selectVoice(v.dataUrl, v.name, null);
+        pill.querySelector(".preview").onclick = (e) => { e.stopPropagation(); downloadRecVoice(v); };
         container.appendChild(pill);
       }
     }

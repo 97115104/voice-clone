@@ -1,36 +1,91 @@
 /Users/x97115104/Documents/Projects/oss/voice-clone/.venv/lib/python3.12/site-packages/perth/perth_net/__init__.py:1: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
   from pkg_resources import resource_filename
 [chatterbox] loading model on mps...
-/Users/x97115104/Documents/Projects/oss/voice-clone/.venv/lib/python3.12/site-packages/diffusers/models/lora.py:393: FutureWarning: `LoRACompatibleLinear` is deprecated and will be removed in version 1.0.0. Use of `LoRACompatibleLinear` is deprecated. Please switch to PEFT backend by installing PEFT: `pip install peft`.
-  deprecate("LoRACompatibleLinear", "1.0.0", deprecation_message)
-loaded PerthNet (Implicit) at step 250,000
-[chatterbox] model loaded in 9.6s  sr=24000
-[chatterbox] warming up...
-WARNING:chatterbox.models.s3gen.utils.mel:Audio values outside normalized range: min=-1.0060, max=0.9988
-/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/contextlib.py:105: FutureWarning: `torch.backends.cuda.sdp_kernel()` is deprecated. In the future, this context manager will be removed. Please see `torch.nn.attention.sdpa_kernel()` for the new context manager, with updated signature.
-  self.gen = func(*args, **kwds)
-`sdpa` attention does not support `output_attentions=True`. Please set your attention to `eager` if you want any of these features.
-Sampling:   0%|          | 0/1000 [00:00<?, ?it/s]Sampling:   0%|          | 1/1000 [00:00<03:08,  5.30it/s]Sampling:   0%|          | 4/1000 [00:00<01:15, 13.17it/s]Sampling:   1%|          | 6/1000 [00:00<01:05, 15.28it/s]Sampling:   1%|          | 8/1000 [00:00<01:00, 16.27it/s]Sampling:   1%|          | 10/1000 [00:00<00:58, 16.99it/s]Sampling:   1%|          | 12/1000 [00:00<00:55, 17.65it/s]Sampling:   1%|▏         | 14/1000 [00:00<00:53, 18.33it/s]Sampling:   2%|▏         | 16/1000 [00:00<00:55, 17.71it/s]Sampling:   2%|▏         | 18/1000 [00:01<00:54, 18.01it/s]Sampling:   2%|▏         | 20/1000 [00:01<00:53, 18.33it/s]Sampling:   2%|▏         | 22/1000 [00:01<00:52, 18.46it/s]Sampling:   2%|▏         | 24/1000 [00:01<00:52, 18.51it/s]Sampling:   2%|▎         | 25/1000 [00:01<00:57, 16.92it/s]
-[chatterbox] warmup complete
-INFO:     Started server process [3424]
+INFO:     Started server process [21899]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8004 (Press CTRL+C to quit)
-INFO:     127.0.0.1:63654 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63655 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63656 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63656 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63656 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63656 - "GET /api/voices HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63657 - "GET /voices/default.txt HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63657 - "GET /attestation.json HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63666 - "POST /tts/stream HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64490 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64492 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64498 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64490 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64490 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64502 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64503 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64490 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64505 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64510 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64490 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64512 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64513 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64490 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64514 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64515 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64490 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64517 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64520 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64490 - "GET /health HTTP/1.1" 503 Service Unavailable
+/Users/x97115104/Documents/Projects/oss/voice-clone/.venv/lib/python3.12/site-packages/diffusers/models/lora.py:393: FutureWarning: `LoRACompatibleLinear` is deprecated and will be removed in version 1.0.0. Use of `LoRACompatibleLinear` is deprecated. Please switch to PEFT backend by installing PEFT: `pip install peft`.
+  deprecate("LoRACompatibleLinear", "1.0.0", deprecation_message)
+INFO:     127.0.0.1:64522 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64523 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64490 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64525 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64526 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64527 - "GET /health HTTP/1.1" 503 Service Unavailable
+loaded PerthNet (Implicit) at step 250,000
+[chatterbox] model loaded in 9.1s  sr=24000
+[chatterbox] warming up...
+INFO:     127.0.0.1:64528 - "GET /health HTTP/1.1" 503 Service Unavailable
+WARNING:chatterbox.models.s3gen.utils.mel:Audio values outside normalized range: min=-1.0060, max=0.9988
+INFO:     127.0.0.1:64490 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64499 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64529 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64530 - "GET /health HTTP/1.1" 503 Service Unavailable
 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/contextlib.py:105: FutureWarning: `torch.backends.cuda.sdp_kernel()` is deprecated. In the future, this context manager will be removed. Please see `torch.nn.attention.sdpa_kernel()` for the new context manager, with updated signature.
   self.gen = func(*args, **kwds)
-Sampling:   0%|          | 0/1000 [00:00<?, ?it/s]Sampling:   0%|          | 3/1000 [00:00<00:41, 23.80it/s]Sampling:   1%|          | 6/1000 [00:00<00:40, 24.53it/s]Sampling:   1%|          | 9/1000 [00:00<00:39, 24.94it/s]Sampling:   1%|          | 12/1000 [00:00<00:39, 24.96it/s]Sampling:   2%|▏         | 15/1000 [00:00<00:41, 23.92it/s]Sampling:   2%|▏         | 18/1000 [00:00<00:41, 23.69it/s]Sampling:   2%|▏         | 21/1000 [00:00<00:43, 22.71it/s]Sampling:   2%|▏         | 24/1000 [00:01<00:43, 22.37it/s]Sampling:   3%|▎         | 27/1000 [00:01<00:44, 21.95it/s]Sampling:   3%|▎         | 30/1000 [00:01<00:46, 20.92it/s]Sampling:   3%|▎         | 33/1000 [00:01<00:46, 20.63it/s]Sampling:   4%|▎         | 36/1000 [00:01<00:47, 20.34it/s]Sampling:   4%|▍         | 39/1000 [00:01<00:47, 20.26it/s]Sampling:   4%|▍         | 42/1000 [00:01<00:50, 18.98it/s]Sampling:   4%|▍         | 44/1000 [00:02<00:49, 19.16it/s]Sampling:   5%|▍         | 46/1000 [00:02<00:49, 19.18it/s]Sampling:   5%|▍         | 48/1000 [00:02<00:50, 18.88it/s]Sampling:   5%|▌         | 50/1000 [00:02<00:50, 18.65it/s]Sampling:   5%|▌         | 52/1000 [00:02<00:50, 18.68it/s]Sampling:   5%|▌         | 54/1000 [00:02<00:50, 18.77it/s]Sampling:   6%|▌         | 57/1000 [00:02<00:48, 19.63it/s]Sampling:   6%|▌         | 60/1000 [00:02<00:46, 20.21it/s]Sampling:   6%|▋         | 63/1000 [00:03<00:45, 20.42it/s]Sampling:   7%|▋         | 66/1000 [00:03<00:45, 20.56it/s]Sampling:   7%|▋         | 69/1000 [00:03<00:45, 20.37it/s]Sampling:   7%|▋         | 72/1000 [00:03<00:44, 20.65it/s]Sampling:   8%|▊         | 75/1000 [00:03<00:44, 20.58it/s]Sampling:   8%|▊         | 78/1000 [00:03<00:44, 20.76it/s]Sampling:   8%|▊         | 81/1000 [00:03<00:44, 20.62it/s]Sampling:   8%|▊         | 84/1000 [00:04<00:44, 20.60it/s]Sampling:   9%|▊         | 87/1000 [00:04<00:44, 20.70it/s]Sampling:   9%|▉         | 90/1000 [00:04<00:44, 20.62it/s]Sampling:   9%|▉         | 93/1000 [00:04<00:44, 20.48it/s]Sampling:  10%|▉         | 96/1000 [00:04<00:44, 20.25it/s]Sampling:  10%|▉         | 96/1000 [00:04<00:43, 20.65it/s]
-INFO:     127.0.0.1:63669 - "GET /favicon.ico HTTP/1.1" 404 Not Found
-Sampling:   0%|          | 0/1000 [00:00<?, ?it/s]Sampling:   0%|          | 3/1000 [00:00<00:40, 24.89it/s]Sampling:   1%|          | 6/1000 [00:00<00:37, 26.25it/s]Sampling:   1%|          | 9/1000 [00:00<00:37, 26.25it/s]Sampling:   1%|          | 12/1000 [00:00<00:37, 26.13it/s]Sampling:   2%|▏         | 15/1000 [00:00<00:37, 26.24it/s]Sampling:   2%|▏         | 18/1000 [00:00<00:36, 26.89it/s]Sampling:   2%|▏         | 21/1000 [00:00<00:35, 27.46it/s]Sampling:   2%|▏         | 24/1000 [00:00<00:35, 27.17it/s]Sampling:   3%|▎         | 27/1000 [00:01<00:36, 26.47it/s]Sampling:   3%|▎         | 30/1000 [00:01<00:36, 26.63it/s]Sampling:   3%|▎         | 33/1000 [00:01<00:37, 25.94it/s]Sampling:   4%|▎         | 36/1000 [00:01<00:37, 25.81it/s]Sampling:   4%|▍         | 39/1000 [00:01<00:39, 24.52it/s]Sampling:   4%|▍         | 42/1000 [00:01<00:39, 24.36it/s]Sampling:   4%|▍         | 45/1000 [00:01<00:39, 24.38it/s]Sampling:   5%|▍         | 48/1000 [00:01<00:39, 24.32it/s]Sampling:   5%|▌         | 51/1000 [00:01<00:38, 24.59it/s]Sampling:   5%|▌         | 54/1000 [00:02<00:37, 24.95it/s]Sampling:   6%|▌         | 57/1000 [00:02<00:37, 25.07it/s]Sampling:   6%|▌         | 60/1000 [00:02<00:37, 24.90it/s]Sampling:   6%|▋         | 63/1000 [00:02<00:37, 24.94it/s]Sampling:   7%|▋         | 66/1000 [00:02<00:37, 25.22it/s]Sampling:   7%|▋         | 69/1000 [00:02<00:36, 25.66it/s]Sampling:   7%|▋         | 72/1000 [00:02<00:35, 26.12it/s]Sampling:   8%|▊         | 75/1000 [00:02<00:35, 26.18it/s]Sampling:   8%|▊         | 78/1000 [00:03<00:35, 25.90it/s]Sampling:   8%|▊         | 81/1000 [00:03<00:35, 26.25it/s]Sampling:   8%|▊         | 84/1000 [00:03<00:35, 25.73it/s]Sampling:   9%|▊         | 87/1000 [00:03<00:36, 24.68it/s]Sampling:   9%|▉         | 90/1000 [00:03<00:38, 23.94it/s]Sampling:   9%|▉         | 93/1000 [00:03<00:37, 23.95it/s]Sampling:  10%|▉         | 96/1000 [00:03<00:37, 24.32it/s]Sampling:  10%|▉         | 99/1000 [00:03<00:40, 22.50it/s]Sampling:  10%|█         | 102/1000 [00:04<00:42, 20.92it/s]Sampling:  10%|█         | 105/1000 [00:04<00:44, 20.03it/s]Sampling:  11%|█         | 108/1000 [00:04<00:45, 19.56it/s]Sampling:  11%|█         | 110/1000 [00:04<00:46, 19.31it/s]Sampling:  11%|█         | 112/1000 [00:04<00:47, 18.86it/s]Sampling:  11%|█▏        | 114/1000 [00:04<00:49, 17.99it/s]Sampling:  12%|█▏        | 116/1000 [00:04<00:49, 18.04it/s]Sampling:  12%|█▏        | 118/1000 [00:05<00:48, 18.11it/s]Sampling:  12%|█▏        | 120/1000 [00:05<00:49, 17.90it/s]Sampling:  12%|█▏        | 122/1000 [00:05<00:48, 18.02it/s]Sampling:  12%|█▏        | 124/1000 [00:05<00:48, 18.04it/s]Sampling:  13%|█▎        | 126/1000 [00:05<00:48, 17.89it/s]Sampling:  13%|█▎        | 128/1000 [00:05<00:48, 18.13it/s]Sampling:  13%|█▎        | 130/1000 [00:05<00:48, 18.05it/s]Sampling:  13%|█▎        | 132/1000 [00:05<00:48, 17.96it/s]Sampling:  13%|█▎        | 134/1000 [00:05<00:47, 18.13it/s]Sampling:  14%|█▎        | 136/1000 [00:06<00:49, 17.52it/s]Sampling:  14%|█▍        | 138/1000 [00:06<00:49, 17.33it/s]Sampling:  14%|█▍        | 140/1000 [00:06<00:49, 17.48it/s]Sampling:  14%|█▍        | 142/1000 [00:06<00:49, 17.31it/s]Sampling:  14%|█▍        | 143/1000 [00:06<00:38, 22.19it/s]
+INFO:     127.0.0.1:64532 - "GET /health HTTP/1.1" 503 Service Unavailable
+`sdpa` attention does not support `output_attentions=True`. Please set your attention to `eager` if you want any of these features.
+Sampling:   0%|          | 0/1000 [00:00<?, ?it/s]Sampling:   0%|          | 1/1000 [00:00<03:03,  5.44it/s]INFO:     127.0.0.1:64533 - "GET /health HTTP/1.1" 503 Service Unavailable
+Sampling:   0%|          | 3/1000 [00:00<01:30, 10.98it/s]Sampling:   0%|          | 5/1000 [00:00<01:10, 14.13it/s]INFO:     127.0.0.1:64499 - "GET /health HTTP/1.1" 503 Service Unavailable
+Sampling:   1%|          | 7/1000 [00:00<01:03, 15.64it/s]Sampling:   1%|          | 10/1000 [00:00<00:56, 17.55it/s]INFO:     127.0.0.1:64534 - "GET /health HTTP/1.1" 503 Service Unavailable
+Sampling:   1%|▏         | 13/1000 [00:00<00:57, 17.09it/s]Sampling:   2%|▏         | 16/1000 [00:00<00:53, 18.23it/s]Sampling:   2%|▏         | 19/1000 [00:01<00:51, 18.96it/s]INFO:     127.0.0.1:64535 - "GET /health HTTP/1.1" 503 Service Unavailable
+Sampling:   2%|▏         | 22/1000 [00:01<00:50, 19.36it/s]INFO:     127.0.0.1:64499 - "GET /health HTTP/1.1" 503 Service Unavailable
+Sampling:   2%|▎         | 25/1000 [00:01<00:50, 19.46it/s]Sampling:   3%|▎         | 27/1000 [00:01<00:49, 19.48it/s]Sampling:   3%|▎         | 29/1000 [00:01<00:50, 19.27it/s]Sampling:   3%|▎         | 31/1000 [00:01<00:50, 19.16it/s]INFO:     127.0.0.1:64536 - "GET /health HTTP/1.1" 503 Service Unavailable
+Sampling:   3%|▎         | 33/1000 [00:01<00:50, 19.05it/s]Sampling:   4%|▎         | 35/1000 [00:01<00:50, 18.97it/s]Sampling:   4%|▍         | 38/1000 [00:02<00:49, 19.40it/s]Sampling:   4%|▍         | 40/1000 [00:02<00:49, 19.44it/s]INFO:     127.0.0.1:64537 - "GET /health HTTP/1.1" 503 Service Unavailable
+Sampling:   4%|▍         | 43/1000 [00:02<00:48, 19.71it/s]INFO:     127.0.0.1:64499 - "GET /health HTTP/1.1" 503 Service Unavailable
+Sampling:   4%|▍         | 45/1000 [00:02<01:08, 13.96it/s]Sampling:   5%|▍         | 47/1000 [00:02<01:04, 14.70it/s]INFO:     127.0.0.1:64539 - "GET /health HTTP/1.1" 503 Service Unavailable
+Sampling:   5%|▍         | 49/1000 [00:02<01:00, 15.63it/s]Sampling:   5%|▌         | 51/1000 [00:02<00:59, 16.03it/s]Sampling:   5%|▌         | 53/1000 [00:03<00:57, 16.54it/s]Sampling:   5%|▌         | 53/1000 [00:03<00:55, 17.08it/s]
+INFO:     127.0.0.1:64540 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64499 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64541 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64542 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64499 - "GET /health HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:64499 - "GET /health HTTP/1.1" 503 Service Unavailable
+[chatterbox] warmup complete
+INFO:     127.0.0.1:64543 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64544 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64499 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64499 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64499 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64499 - "GET /api/voices HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64545 - "GET /voices/default.txt HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64545 - "GET /attestation.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64545 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64545 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64545 - "GET /api/voices HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64499 - "GET /voices/default.txt HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64499 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64499 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64499 - "GET /api/voices HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64545 - "GET /voices/default.txt HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64546 - "POST /tts/stream HTTP/1.1" 200 OK
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/contextlib.py:105: FutureWarning: `torch.backends.cuda.sdp_kernel()` is deprecated. In the future, this context manager will be removed. Please see `torch.nn.attention.sdpa_kernel()` for the new context manager, with updated signature.
+  self.gen = func(*args, **kwds)
+Sampling:   0%|          | 0/1000 [00:00<?, ?it/s]Sampling:   0%|          | 3/1000 [00:00<00:38, 25.98it/s]Sampling:   1%|          | 6/1000 [00:00<00:36, 27.53it/s]Sampling:   1%|          | 10/1000 [00:00<00:34, 28.65it/s]Sampling:   1%|▏         | 13/1000 [00:00<00:34, 28.26it/s]Sampling:   2%|▏         | 16/1000 [00:00<00:35, 27.58it/s]Sampling:   2%|▏         | 19/1000 [00:00<00:35, 27.30it/s]Sampling:   2%|▏         | 22/1000 [00:00<00:37, 26.32it/s]Sampling:   2%|▎         | 25/1000 [00:00<00:37, 25.74it/s]Sampling:   3%|▎         | 28/1000 [00:01<00:38, 25.39it/s]Sampling:   3%|▎         | 31/1000 [00:01<00:40, 23.94it/s]Sampling:   3%|▎         | 34/1000 [00:01<00:39, 24.23it/s]Sampling:   4%|▎         | 37/1000 [00:01<00:39, 24.18it/s]Sampling:   4%|▍         | 40/1000 [00:01<00:39, 24.01it/s]Sampling:   4%|▍         | 43/1000 [00:01<00:39, 24.48it/s]Sampling:   5%|▍         | 46/1000 [00:01<00:38, 24.55it/s]Sampling:   5%|▍         | 49/1000 [00:01<00:39, 24.25it/s]Sampling:   5%|▌         | 52/1000 [00:02<00:38, 24.42it/s]Sampling:   6%|▌         | 55/1000 [00:02<00:39, 24.02it/s]Sampling:   6%|▌         | 58/1000 [00:02<00:41, 22.46it/s]Sampling:   6%|▌         | 61/1000 [00:02<00:43, 21.62it/s]Sampling:   6%|▋         | 64/1000 [00:02<00:44, 20.83it/s]Sampling:   7%|▋         | 67/1000 [00:02<00:46, 20.22it/s]Sampling:   7%|▋         | 70/1000 [00:02<00:46, 19.99it/s]Sampling:   7%|▋         | 73/1000 [00:03<00:46, 19.79it/s]Sampling:   8%|▊         | 76/1000 [00:03<00:46, 19.96it/s]Sampling:   8%|▊         | 79/1000 [00:03<00:46, 19.85it/s]Sampling:   8%|▊         | 81/1000 [00:03<00:46, 19.67it/s]Sampling:   8%|▊         | 83/1000 [00:03<00:47, 19.32it/s]Sampling:   8%|▊         | 85/1000 [00:03<00:47, 19.07it/s]Sampling:   9%|▊         | 87/1000 [00:03<00:47, 19.13it/s]Sampling:   9%|▉         | 89/1000 [00:03<00:48, 18.92it/s]Sampling:   9%|▉         | 91/1000 [00:04<00:48, 18.58it/s]Sampling:   9%|▉         | 93/1000 [00:04<00:48, 18.77it/s]Sampling:  10%|▉         | 95/1000 [00:04<00:47, 18.96it/s]Sampling:  10%|▉         | 97/1000 [00:04<00:47, 19.08it/s]Sampling:  10%|█         | 100/1000 [00:04<00:46, 19.42it/s]Sampling:  10%|█         | 103/1000 [00:04<00:45, 19.59it/s]Sampling:  10%|█         | 105/1000 [00:04<00:46, 19.36it/s]Sampling:  11%|█         | 107/1000 [00:04<00:45, 19.48it/s]Sampling:  11%|█         | 110/1000 [00:05<00:45, 19.64it/s]Sampling:  11%|█         | 112/1000 [00:05<00:46, 19.29it/s]Sampling:  12%|█▏        | 115/1000 [00:05<00:44, 19.71it/s]Sampling:  12%|█▏        | 115/1000 [00:05<00:40, 21.68it/s]
+INFO:     127.0.0.1:64548 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+Sampling:   0%|          | 0/1000 [00:00<?, ?it/s]Sampling:   0%|          | 3/1000 [00:00<00:38, 25.70it/s]Sampling:   1%|          | 6/1000 [00:00<00:36, 26.93it/s]Sampling:   1%|          | 9/1000 [00:00<00:36, 27.32it/s]Sampling:   1%|          | 12/1000 [00:00<00:37, 26.08it/s]Sampling:   2%|▏         | 15/1000 [00:00<00:38, 25.56it/s]Sampling:   2%|▏         | 18/1000 [00:00<00:38, 25.61it/s]Sampling:   2%|▏         | 21/1000 [00:00<00:38, 25.61it/s]Sampling:   2%|▏         | 24/1000 [00:00<00:38, 25.55it/s]Sampling:   3%|▎         | 27/1000 [00:01<00:37, 25.71it/s]Sampling:   3%|▎         | 30/1000 [00:01<00:39, 24.68it/s]Sampling:   3%|▎         | 33/1000 [00:01<00:38, 25.08it/s]Sampling:   4%|▎         | 36/1000 [00:01<00:38, 24.74it/s]Sampling:   4%|▍         | 39/1000 [00:01<00:39, 24.34it/s]Sampling:   4%|▍         | 42/1000 [00:01<00:38, 24.57it/s]Sampling:   4%|▍         | 45/1000 [00:01<00:38, 24.93it/s]Sampling:   5%|▍         | 48/1000 [00:01<00:37, 25.10it/s]Sampling:   5%|▌         | 51/1000 [00:02<00:38, 24.81it/s]Sampling:   5%|▌         | 54/1000 [00:02<00:38, 24.76it/s]Sampling:   6%|▌         | 57/1000 [00:02<00:38, 24.62it/s]Sampling:   6%|▌         | 60/1000 [00:02<00:37, 24.78it/s]Sampling:   6%|▋         | 63/1000 [00:02<00:37, 24.76it/s]Sampling:   7%|▋         | 66/1000 [00:02<00:37, 25.13it/s]Sampling:   7%|▋         | 69/1000 [00:02<00:36, 25.56it/s]Sampling:   7%|▋         | 72/1000 [00:02<00:36, 25.43it/s]Sampling:   8%|▊         | 75/1000 [00:02<00:36, 25.05it/s]Sampling:   8%|▊         | 78/1000 [00:03<00:37, 24.70it/s]Sampling:   8%|▊         | 81/1000 [00:03<00:37, 24.74it/s]Sampling:   8%|▊         | 84/1000 [00:03<00:37, 24.48it/s]Sampling:   9%|▊         | 87/1000 [00:03<00:37, 24.23it/s]Sampling:   9%|▉         | 90/1000 [00:03<00:36, 24.78it/s]Sampling:   9%|▉         | 93/1000 [00:03<00:35, 25.21it/s]Sampling:  10%|▉         | 96/1000 [00:03<00:35, 25.33it/s]Sampling:  10%|▉         | 99/1000 [00:03<00:35, 25.62it/s]Sampling:  10%|█         | 102/1000 [00:04<00:35, 25.39it/s]Sampling:  10%|█         | 105/1000 [00:04<00:36, 24.49it/s]Sampling:  11%|█         | 108/1000 [00:04<00:38, 23.17it/s]Sampling:  11%|█         | 111/1000 [00:04<00:38, 23.35it/s]Sampling:  11%|█▏        | 114/1000 [00:04<00:37, 23.63it/s]Sampling:  12%|█▏        | 117/1000 [00:04<00:37, 23.25it/s]Sampling:  12%|█▏        | 120/1000 [00:04<00:40, 21.48it/s]Sampling:  12%|█▏        | 123/1000 [00:05<00:42, 20.66it/s]Sampling:  13%|█▎        | 126/1000 [00:05<00:43, 20.15it/s]Sampling:  13%|█▎        | 129/1000 [00:05<00:43, 20.00it/s]Sampling:  13%|█▎        | 132/1000 [00:05<00:44, 19.59it/s]Sampling:  13%|█▎        | 134/1000 [00:05<00:44, 19.40it/s]Sampling:  14%|█▎        | 136/1000 [00:05<00:44, 19.48it/s]Sampling:  14%|█▍        | 138/1000 [00:05<00:45, 18.91it/s]Sampling:  14%|█▍        | 140/1000 [00:05<00:46, 18.65it/s]Sampling:  14%|█▍        | 142/1000 [00:06<00:46, 18.40it/s]Sampling:  14%|█▍        | 144/1000 [00:06<00:46, 18.53it/s]Sampling:  15%|█▍        | 146/1000 [00:06<00:45, 18.70it/s]Sampling:  15%|█▍        | 148/1000 [00:06<00:46, 18.48it/s]Sampling:  15%|█▌        | 150/1000 [00:06<00:45, 18.49it/s]Sampling:  15%|█▌        | 152/1000 [00:06<00:46, 18.43it/s]Sampling:  15%|█▌        | 154/1000 [00:06<00:46, 18.11it/s]Sampling:  16%|█▌        | 156/1000 [00:06<00:47, 17.58it/s]Sampling:  16%|█▌        | 158/1000 [00:06<00:48, 17.25it/s]Sampling:  16%|█▌        | 160/1000 [00:07<00:49, 16.95it/s]Sampling:  16%|█▌        | 161/1000 [00:07<00:37, 22.50it/s]
 INFO:     Shutting down
 INFO:     Waiting for application shutdown.
 INFO:     Application shutdown complete.
-INFO:     Finished server process [3424]
+INFO:     Finished server process [21899]
