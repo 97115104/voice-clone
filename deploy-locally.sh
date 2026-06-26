@@ -42,11 +42,15 @@ OPEN_BROWSER=1
 FORCE_BUILD=0
 SKIP_BUILD=0
 DETACH=0
+NO_TUNNEL=0
 
 COMPOSE_CMD=()
 COMPOSE_FILES=(-f "$ROOT/docker-compose.yml")
 GPU_MODE="cpu"
 GPU_NAME="CPU"
+TUNNEL_PID=""
+TUNNEL_URL=""
+OS_FAMILY=""
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Banner
@@ -69,10 +73,16 @@ Usage:
   ./deploy-locally.sh --no-build   Skip build even if image is missing
   ./deploy-locally.sh --detach     Exit after start (container keeps running)
   ./deploy-locally.sh --no-open    Do not open a browser tab
+  ./deploy-locally.sh --no-tunnel  Skip Cloudflare Quick Tunnel
 
 Environment:
   PORT=8004
   USE_GPU=1|0         Force GPU overlay on/off (Linux only)
+
+URLs (default):
+  Web UI   http://127.0.0.1:8004
+  Admin    http://127.0.0.1:8004/admin
+  API      http://127.0.0.1:8004/v1
 EOF
 }
 
@@ -84,6 +94,7 @@ parse_args() {
       --no-build) SKIP_BUILD=1 ;;
       --detach|-d) DETACH=1 ;;
       --no-open) OPEN_BROWSER=0 ;;
+      --no-tunnel) NO_TUNNEL=1 ;;
       --help|-h) usage; exit 0 ;;
       *) die "Unknown option: $1" ;;
     esac
@@ -100,11 +111,129 @@ ARCH=""
 detect_os() {
   ARCH=$(uname -m)
   case "$(uname -s)" in
-    Darwin) OS="macos" ;;
-    Linux)  OS="linux" ;;
+    Darwin) OS="macos"; OS_FAMILY="macos" ;;
+    Linux)
+      OS="linux"
+      if [[ -f /etc/debian_version ]]; then OS_FAMILY="debian"
+      elif [[ -f /etc/arch-release ]]; then OS_FAMILY="arch"
+      elif [[ -f /etc/fedora-release ]] || grep -qi fedora /etc/os-release 2>/dev/null; then OS_FAMILY="fedora"
+      else OS_FAMILY="linux"
+      fi
+      ;;
     *) die "Unsupported OS: $(uname -s). macOS and Linux only." ;;
   esac
   log "Platform: ${B}$OS${R} · ${B}$ARCH${R}"
+}
+
+pkg_ok() { command -v "$1" >/dev/null 2>&1; }
+
+install_cloudflared() {
+  if pkg_ok cloudflared; then
+    ok "cloudflared already installed"
+    return 0
+  fi
+  if [[ "$NO_TUNNEL" == "1" ]]; then
+    return 0
+  fi
+
+  section "Installing Cloudflare Tunnel client"
+  log "No Cloudflare account required — trycloudflare.com"
+
+  local base="https://github.com/cloudflare/cloudflared/releases/latest/download"
+  local tmpdir; tmpdir=$(mktemp -d)
+
+  case "$OS" in
+    macos)
+      if pkg_ok brew; then
+        brew install cloudflare/cloudflare/cloudflared >/dev/null 2>&1 &
+        spin $! "Installing cloudflared"
+        ok "cloudflared installed"
+      else
+        warn "Homebrew not found — install cloudflared manually for tunnel support"
+      fi
+      ;;
+    linux)
+      local bin="cloudflared-linux-amd64"
+      [[ "$ARCH" == "aarch64" || "$ARCH" == "arm64" ]] && bin="cloudflared-linux-arm64"
+      if [[ "$OS_FAMILY" == "debian" ]] && [[ "$ARCH" == "x86_64" || "$ARCH" == "amd64" ]]; then
+        curl -fsSL "$base/cloudflared-linux-amd64.deb" -o "$tmpdir/cloudflared.deb" >/dev/null 2>&1 &
+        spin $! "Downloading cloudflared"
+        if sudo dpkg -i "$tmpdir/cloudflared.deb" >/dev/null 2>&1; then
+          ok "cloudflared installed"
+        else
+          curl -fsSL "$base/$bin" -o "$tmpdir/cloudflared" >/dev/null 2>&1
+          sudo install -m 0755 "$tmpdir/cloudflared" /usr/local/bin/cloudflared
+          ok "cloudflared installed (binary)"
+        fi
+      else
+        curl -fsSL "$base/$bin" -o "$tmpdir/cloudflared" >/dev/null 2>&1 &
+        spin $! "Downloading cloudflared"
+        sudo install -m 0755 "$tmpdir/cloudflared" /usr/local/bin/cloudflared
+        ok "cloudflared installed"
+      fi
+      ;;
+  esac
+  rm -rf "$tmpdir"
+}
+
+get_admin_token() {
+  local user="admin" pass="password"
+  if [[ -f "$ROOT/.env" ]]; then
+    local u p
+    u=$(grep '^ADMIN_USERNAME=' "$ROOT/.env" | cut -d= -f2- | tr -d '"' | tr -d "'" 2>/dev/null || true)
+    p=$(grep '^ADMIN_PASSWORD=' "$ROOT/.env" | cut -d= -f2- | tr -d '"' | tr -d "'" 2>/dev/null || true)
+    [[ -n "$u" ]] && user="$u"
+    [[ -n "$p" ]] && pass="$p"
+  fi
+  curl -sf -X POST "http://127.0.0.1:$PORT/admin/login" \
+    -H "Content-Type: application/json" \
+    -d "{\"username\": \"$user\", \"password\": \"$pass\"}" 2>/dev/null \
+    | sed -n 's/.*"token"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1 || echo ""
+}
+
+start_tunnel() {
+  if [[ "$NO_TUNNEL" == "1" ]]; then
+    log "Skipping Cloudflare tunnel (--no-tunnel)"
+    return 0
+  fi
+  if ! pkg_ok cloudflared; then
+    warn "cloudflared not found — skipping tunnel. Instance is local-only."
+    return 0
+  fi
+
+  section "Starting Cloudflare Quick Tunnel"
+  log "No Cloudflare account required — powered by trycloudflare.com"
+
+  local tmplog; tmplog=$(mktemp)
+  cloudflared tunnel --url "http://127.0.0.1:$PORT" --no-autoupdate >"$tmplog" 2>&1 &
+  TUNNEL_PID=$!
+
+  local elapsed=0
+  while [[ $elapsed -lt 40 ]]; do
+    TUNNEL_URL=$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' "$tmplog" 2>/dev/null | head -1 || true)
+    [[ -n "$TUNNEL_URL" ]] && break
+    sleep 1; ((elapsed++)) || true
+  done
+  rm -f "$tmplog"
+
+  if [[ -n "$TUNNEL_URL" ]]; then
+    ok "Tunnel: ${B}${LIME}$TUNNEL_URL${R}"
+    local admin_token
+    admin_token=$(get_admin_token 2>/dev/null || echo "")
+    if [[ -n "$admin_token" ]]; then
+      curl -sf -X POST "http://127.0.0.1:$PORT/setup/tunnel" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $admin_token" \
+        -d "{\"url\": \"$TUNNEL_URL\"}" >/dev/null 2>&1 || true
+    fi
+  else
+    warn "Could not obtain tunnel URL. Remote access unavailable this session."
+  fi
+}
+
+stop_tunnel() {
+  [[ -n "$TUNNEL_PID" ]] && kill "$TUNNEL_PID" 2>/dev/null || true
+  TUNNEL_PID=""
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -313,6 +442,10 @@ start_studio() {
   detect_compose
   cd "$ROOT"
   export PORT
+  mkdir -p data
+  [[ ! -f .env ]] && { cp .env.example .env; log "Created .env from .env.example"; }
+
+  install_cloudflared
 
   if [[ "$SKIP_BUILD" != "1" ]]; then
     if [[ "$FORCE_BUILD" == "1" ]] || ! image_exists; then
@@ -329,13 +462,13 @@ start_studio() {
 
   wait_for_container
 
-  [[ "$OPEN_BROWSER" == "1" ]] && open_browser
   ok "Web UI → http://127.0.0.1:$PORT"
   log "Model download/load progress is shown in the browser (first run ~3 GB)"
 }
 
 stop_studio() {
   section "Stopping Voice Clone"
+  stop_tunnel
   if ! resolve_docker 2>/dev/null || ! docker info >/dev/null 2>&1; then
     ok "Docker not running — nothing to stop"
     return 0
@@ -358,10 +491,22 @@ print_summary() {
   printf "\n"; hr; printf "\n"
   printf "  ${B}${LIME}Voice Clone is running!${R}\n\n"
   printf "  ${B}Web UI${R}  →  ${CYN}http://127.0.0.1:$PORT${R}\n"
+  printf "  ${B}Admin${R}   →  ${CYN}http://127.0.0.1:$PORT/admin${R}\n"
+  [[ -n "$TUNNEL_URL" ]] && \
+    printf "  ${B}Public${R}  →  ${LIME}$TUNNEL_URL${R}\n"
   printf "  ${GRY}Runtime: $GPU_MODE · $GPU_NAME${R}\n"
+  printf "  ${GRY}Default login: admin / password (change in .env)${R}\n"
   printf "  ${GRY}Model download progress is shown in the browser.${R}\n\n"
   hr
-  printf "\n  ${GRY}Stop with ${B}./deploy-locally.sh --stop${R}${GRY}.${R}\n\n"
+  if [[ "$DETACH" == "1" ]]; then
+    printf "\n  ${GRY}Detached mode — stop with ${B}./deploy-locally.sh --stop${R}${GRY}.${R}\n\n"
+  else
+    printf "\n  ${GRY}Generate API keys at ${B}/admin${R}${GRY}. Press ${B}Ctrl+C${R}${GRY} to stop.${R}\n\n"
+  fi
+}
+
+cleanup() {
+  stop_tunnel
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -381,7 +526,18 @@ main() {
       detect_os
       select_gpu_mode
       start_studio
+      start_tunnel
+      [[ "$OPEN_BROWSER" == "1" ]] && open_browser
       print_summary
+      if [[ "$DETACH" == "1" ]]; then
+        exit 0
+      fi
+      trap cleanup EXIT INT TERM
+      if [[ -n "$TUNNEL_PID" ]]; then
+        wait "$TUNNEL_PID" 2>/dev/null || true
+      else
+        while true; do sleep 3600; done
+      fi
       ;;
   esac
 }

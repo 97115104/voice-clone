@@ -271,7 +271,8 @@
       <span class="brand">{ voice clone }</span>
       <span style="color:#222;font-size:0.75rem">chatterbox</span>
     </div>
-    <div style="display:flex;align-items:center;gap:0.5rem">
+    <div style="display:flex;align-items:center;gap:0.75rem">
+      <a href="/admin" style="color:var(--faint);font-size:0.75rem;text-decoration:none">admin</a>
       <span id="statusLabel" class="meta"></span>
       <span id="statusDot" class="status-dot"></span>
     </div>
@@ -378,6 +379,8 @@
       "This is a test of the emergency broadcast system. This is only a test.",
     ];
 
+    let apiKey = localStorage.getItem("vc_api_key") || "";
+
     const state = {
       voices: [],
       extMap: {},
@@ -405,6 +408,24 @@
     };
 
     const $ = (id) => document.getElementById(id);
+
+    function authHeaders(extra = {}) {
+      const headers = { ...extra };
+      if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+      return headers;
+    }
+
+    async function ensureApiKey() {
+      if (apiKey) return apiKey;
+      const res = await fetch("/setup/status");
+      if (!res.ok) throw new Error("Could not load setup status");
+      const data = await res.json();
+      if (data.bootstrap_api_key) {
+        apiKey = data.bootstrap_api_key;
+        localStorage.setItem("vc_api_key", apiKey);
+      }
+      return apiKey;
+    }
 
     function concatWAVs(buffers) {
       if (!buffers.length) return new Blob([], { type: "audio/wav" });
@@ -681,8 +702,12 @@
 
     async function loadPreset(name, silent = false) {
       try {
-        const ext = state.extMap[name] || "mp3";
-        const res = await fetch(`/voices/${name}.${ext}`);
+        const voice = state.voices.find(v => v.name === name || v.id === name);
+        const ext = voice?.ext || state.extMap[name] || "mp3";
+        const url = voice?.source === "upload"
+          ? `/api/voices/${voice.id}/audio`
+          : `/voices/${name}.${ext}`;
+        const res = await fetch(url, voice?.source === "upload" ? { headers: authHeaders() } : undefined);
         if (!res.ok) throw new Error("Voice not found");
         const blob = await res.blob();
         const dataUrl = await new Promise((resolve, reject) => {
@@ -691,7 +716,7 @@
           r.onerror = reject;
           r.readAsDataURL(blob);
         });
-        selectVoice(dataUrl, name, name);
+        selectVoice(dataUrl, voice?.name || name, voice?.source === "preset" ? name : null);
       } catch {
         if (!silent) setError(`Could not load voice "${name}".`);
       }
@@ -699,8 +724,12 @@
 
     async function previewVoice(name) {
       try { state.previewCtx?.close(); } catch {}
-      const ext = state.extMap[name] || "mp3";
-      const res = await fetch(`/voices/${name}.${ext}`);
+      const voice = state.voices.find(v => v.name === name || v.id === name);
+      const ext = voice?.ext || state.extMap[name] || "mp3";
+      const url = voice?.source === "upload"
+        ? `/api/voices/${voice.id}/audio`
+        : `/voices/${name}.${ext}`;
+      const res = await fetch(url, voice?.source === "upload" ? { headers: authHeaders() } : undefined);
       if (!res.ok) return;
       const buf = await res.arrayBuffer();
       const ctx = new AudioContext();
@@ -778,15 +807,19 @@
       state.nextStart = audioCtx.currentTime + 0.15;
 
       try {
+        await ensureApiKey();
         const res = await fetch("/tts/stream", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: authHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify({ text, voice: state.voiceData }),
           signal: ac.signal,
         });
         if (!res.ok) {
-          const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
-          throw new Error(err.error || `HTTP ${res.status}`);
+          const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+          const msg = typeof err.detail === "string"
+            ? err.detail
+            : err.detail?.error?.message || err.error || `HTTP ${res.status}`;
+          throw new Error(msg);
         }
 
         const reader = res.body.getReader();
@@ -894,12 +927,14 @@
         setStatus("err", "offline");
       }
 
+      await ensureApiKey();
       const [voicesRes, defaultRes] = await Promise.all([
-        fetch("/api/voices"),
+        fetch("/api/voices", { headers: authHeaders() }),
         fetch("/voices/default.txt"),
       ]);
       state.voices = await voicesRes.json();
       state.extMap = Object.fromEntries(state.voices.map(v => [v.name, v.ext]));
+      state.idMap = Object.fromEntries(state.voices.map(v => [v.name, v.id || v.name]));
       const defaultVoice = ((await defaultRes.text()).trim()) || "fry";
 
       try { state.recVoices = JSON.parse(localStorage.getItem(REC_KEY) || "[]"); } catch { state.recVoices = []; }

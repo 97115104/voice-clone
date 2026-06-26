@@ -11,11 +11,16 @@ services:
       PORT: "8004"
       TTS_DEVICE: cpu
       HF_HOME: /data/huggingface
+      DATA_DIR: /app/data
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-password}
+      JWT_SECRET: ${JWT_SECRET:-voice-clone-change-me}
       CB_EXAGGERATION: "${CB_EXAGGERATION:-0.5}"
       CB_CFG_WEIGHT: "${CB_CFG_WEIGHT:-0.5}"
       CB_TEMPERATURE: "${CB_TEMPERATURE:-0.8}"
     volumes:
       - huggingface-cache:/data/huggingface
+      - ./data:/app/data
       - ./web:/app/web:ro
       - ./server:/app/server:ro
     restart: unless-stopped

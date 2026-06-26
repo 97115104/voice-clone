@@ -5,4 +5,7 @@ soundfile
 fastapi
 uvicorn[standard]
 pydantic
+PyJWT
+bcrypt
+python-multipart
 librosa

@@ -34,6 +34,8 @@ RUN pip install --no-cache-dir "setuptools<82" wheel \
        torch torchvision torchaudio \
        --index-url https://download.pytorch.org/whl/cpu
 
+RUN python -c "import bcrypt, jwt; import multipart; print('auth deps ok')"
+
 ENV TTS_DEVICE=cpu
 
 # ── CUDA (Linux + NVIDIA, incl. RTX 50-series / sm_120) ─────────────────────
@@ -60,6 +62,7 @@ RUN pip install --no-cache-dir "setuptools<82" wheel \
        --index-url https://download.pytorch.org/whl/cu128
 
 RUN python -c "\
+import bcrypt, jwt; \
 import torch, torchvision, torchaudio; \
 from torchaudio.transforms import Spectrogram; \
 from torchvision.transforms import InterpolationMode; \
