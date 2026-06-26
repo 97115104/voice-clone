@@ -1,22 +1,30 @@
 services:
   voice-clone:
+    image: voice-clone:cpu
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        TORCH_INDEX: https://download.pytorch.org/whl/cpu
+      target: cpu
     ports:
       - "${PORT:-8004}:8004"
     environment:
       PORT: "8004"
-      TTS_DEVICE: "${TTS_DEVICE:-cpu}"
+      TTS_DEVICE: cpu
       HF_HOME: /data/huggingface
       CB_EXAGGERATION: "${CB_EXAGGERATION:-0.5}"
       CB_CFG_WEIGHT: "${CB_CFG_WEIGHT:-0.5}"
       CB_TEMPERATURE: "${CB_TEMPERATURE:-0.8}"
     volumes:
       - huggingface-cache:/data/huggingface
+      - ./web:/app/web:ro
+      - ./server:/app/server:ro
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8004/health | grep -q '\"status\":\"ok\"'"]
+      interval: 15s
+      timeout: 5s
+      retries: 40
+      start_period: 1200s
 
 volumes:
   huggingface-cache:

@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store">
   <title>Voice Clone — Loading</title>
   <style>
     :root {
@@ -146,6 +147,7 @@
 
     function phaseText(phase) {
       switch (phase) {
+        case "starting": return "Starting…";
         case "downloading": return "Downloading model files";
         case "loading": return "Loading weights into memory";
         case "warming up": return "Warming up model";
@@ -183,9 +185,18 @@
       message.textContent = text;
     }
 
-    async function poll() {
+    let pollTimer = null;
+    let pollInFlight = false;
+    let done = false;
+
+    async function tick() {
+      if (done || pollInFlight) return;
+      pollInFlight = true;
       try {
-        const res = await fetch("/health");
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        const res = await fetch("/health", { cache: "no-store", signal: controller.signal });
+        clearTimeout(timeout);
         const data = await res.json().catch(() => ({}));
 
         if (data.device) deviceEl.textContent = data.device;
@@ -193,23 +204,33 @@
         if (data.progress) updateProgress(data.progress);
 
         if (res.ok && data.status === "ok") {
+          done = true;
+          if (pollTimer) clearInterval(pollTimer);
           title.textContent = "Ready — opening app…";
           updateProgress({ phase: "ready", percent: 100 });
-          window.location.replace("/");
+          // Bust any cached loading page at / before swapping to the main UI.
+          window.location.replace(`/?_=${Date.now()}`);
           return;
         }
 
         if (data.status === "error") {
+          done = true;
+          if (pollTimer) clearInterval(pollTimer);
           showError(data.error || "Unknown error while loading the model.");
           return;
         }
       } catch {
-        // Server not up yet — keep waiting
+        // Server not up yet, request timed out, or connection reset — retry.
+      } finally {
+        pollInFlight = false;
       }
-      setTimeout(poll, 1000);
     }
 
-    poll();
+    pollTimer = setInterval(tick, 1000);
+    tick();
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) tick();
+    });
   </script>
 </body>
 </html>

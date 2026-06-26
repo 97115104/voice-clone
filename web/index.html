@@ -87,16 +87,6 @@
       border-left: 1px solid var(--stroke);
     }
     .pill button.download:hover { background: rgba(204,255,0,0.08); }
-    .pill-download {
-      padding: 0.375rem 0.75rem;
-      font: inherit;
-      font-size: 0.75rem;
-      color: var(--lime);
-      cursor: pointer;
-      border: 1px solid rgba(204,255,0,0.45);
-      background: rgba(204,255,0,0.06);
-    }
-    .pill-download:hover { background: rgba(204,255,0,0.12); border-color: rgba(204,255,0,0.65); }
     .pill label {
       padding: 0.375rem 0.75rem;
       font-size: 0.75rem;
@@ -188,18 +178,6 @@
       margin-top: 0.5rem;
     }
     .voice-badge span { color: var(--lime); }
-    .voice-badge .voice-dl {
-      margin-left: 0.5rem;
-      background: none;
-      border: 1px solid rgba(204,255,0,0.35);
-      border-radius: 2px;
-      color: var(--lime);
-      font: inherit;
-      font-size: 10px;
-      padding: 0.125rem 0.375rem;
-      cursor: pointer;
-    }
-    .voice-badge .voice-dl:hover { background: rgba(204,255,0,0.08); }
     .modal-backdrop {
       position: fixed;
       inset: 0;
@@ -305,7 +283,6 @@
       <div id="voicePills" class="pills"></div>
       <div id="voiceBadge" class="voice-badge hidden">
         using <span id="voiceName"></span>
-        <button type="button" id="downloadRecBadge" class="voice-dl hidden" title="Download recording">↓ download</button>
       </div>
     </div>
 
@@ -459,21 +436,11 @@
 
     function updateVoiceBadge() {
       const badge = $("voiceBadge");
-      const dl = $("downloadRecBadge");
       if (state.voiceName) {
         $("voiceName").textContent = state.voiceName;
         badge.classList.remove("hidden");
-        const rec = activeRecording();
-        if (rec) {
-          dl.classList.remove("hidden");
-          dl.onclick = () => downloadRecVoice(rec);
-        } else {
-          dl.classList.add("hidden");
-          dl.onclick = null;
-        }
       } else {
         badge.classList.add("hidden");
-        dl.classList.add("hidden");
       }
     }
 
@@ -495,11 +462,6 @@
       return name.length > max ? `${name.slice(0, max - 1)}…` : name;
     }
 
-    function activeRecording() {
-      if (!state.voiceName || state.activePreset) return null;
-      return state.recVoices.find(v => v.name === state.voiceName) || null;
-    }
-
     function downloadRecVoice(v) {
       const mime = v.dataUrl.match(/^data:([^;,]+)/)?.[1] || "audio/webm";
       const ext = mime.includes("wav") ? "wav"
@@ -513,18 +475,6 @@
       document.body.appendChild(a);
       a.click();
       a.remove();
-    }
-
-    function appendActiveRecordingDownload(container) {
-      const rec = activeRecording();
-      if (!rec) return;
-      const dl = document.createElement("button");
-      dl.type = "button";
-      dl.className = "pill pill-download";
-      dl.textContent = "↓ download voice";
-      dl.title = "Save this recording as an audio file";
-      dl.onclick = () => downloadRecVoice(rec);
-      container.appendChild(dl);
     }
 
     function renderSavedVoices() {
@@ -701,8 +651,6 @@
         pill.querySelector(".download").onclick = (e) => { e.stopPropagation(); downloadRecVoice(v); };
         container.appendChild(pill);
       }
-
-      appendActiveRecordingDownload(container);
     }
 
     function renderModal(filter = "") {

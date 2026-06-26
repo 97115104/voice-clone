@@ -41,79 +41,59 @@ This project was built with human direction and AI assistance. Attestation via [
 
 ## Quick start
 
-**One command** — auto-detects Docker vs local Python, and GPU vs CPU:
+**One command** — starts Docker (builds the image on first run only), opens your browser:
 
 ```bash
-./install
-./scripts/deploy.sh
+./deploy-locally.sh
 ```
 
 Open http://localhost:8004
 
-| Platform | Install | Start |
-|----------|---------|-------|
-| macOS / Linux | `./install` | `./scripts/deploy.sh` |
-| Windows (Docker Desktop) | `.\install.ps1` | `.\scripts\deploy.ps1` |
-| Windows (Git Bash / WSL) | `./install --local` | `./scripts/deploy.sh --local` |
+The browser opens as soon as the container is up. Model download and load progress is shown in the loading page — the script does not block on that.
 
-### How auto-detection works
-
-- **Install (`./install`)** — local Python on Apple Silicon / NVIDIA hosts (MPS/CUDA); Docker on other machines when Docker is running
-- **Deploy (`./scripts/deploy.sh`)** — same logic: local when host GPU/MPS is available, otherwise Docker
-- **GPU** — on Linux/Windows with NVIDIA + Docker GPU support, uses CUDA automatically. macOS Docker always uses CPU. Apple Silicon local installs use MPS when available.
-
-### Manual modes
+| Platform | Runtime |
+|----------|---------|
+| macOS | CPU in Docker (GPU passthrough not available) |
+| Linux, no NVIDIA GPU | CPU in Docker |
+| Linux + NVIDIA + nvidia-container-toolkit | CUDA in Docker |
 
 ```bash
-# Docker (builds image on first run, CPU on macOS)
-./install --docker
-./scripts/deploy.sh --docker
+# Force rebuild image
+./deploy-locally.sh --build
 
-# Docker in background (after first build)
-./scripts/deploy.sh --docker --detach --no-build
+# Skip build (fail if image missing)
+./deploy-locally.sh --no-build
 
-# Local Python only (recommended on Apple Silicon — uses MPS)
-./install --local
-./scripts/deploy.sh --local
+# Stop
+./deploy-locally.sh --stop
 
-# Docker with NVIDIA GPU (Linux/Windows only)
-./scripts/deploy-docker.sh
-
-# Stop everything
-./scripts/deploy.sh --stop
+# Force CPU or GPU on Linux
+USE_GPU=0 ./deploy-locally.sh
+USE_GPU=1 ./deploy-locally.sh
 ```
-
-On **Apple Silicon Macs**, `./scripts/deploy.sh` defaults to **local MPS** (much faster than Docker CPU). Use `--docker` only when you explicitly want a container.
-
-### Windows notes
-
-- **Docker Desktop** (recommended): use `install.ps1` and `scripts\deploy.ps1`
-- **Git Bash / WSL**: use the bash scripts (`./install`, `./scripts/deploy.sh`)
-- Docker on Windows with WSL2 + NVIDIA can use GPU; Docker on macOS cannot pass GPU to containers
 
 ### First startup
 
-The Chatterbox model downloads on first run (Docker volume `huggingface-cache`, or local `~/.cache`). CPU can take 5–15 minutes.
+- **Image build** (first run only): several minutes while Docker pulls the base image and installs dependencies. A spinner shows progress.
+- **Model download** (first run per volume): ~3 GB into the `huggingface-cache` Docker volume. Progress is shown in the browser loading page.
+- **Re-runs**: fast — cached image and cached model weights.
 
 ## Scripts
 
 | Script | Purpose |
 |--------|---------|
-| `./install` | Install (auto Docker or local) |
-| `./scripts/deploy.sh` | Start app (auto; add `--docker` or `--local`) |
-| `./scripts/deploy-docker.sh` | Docker only |
-| `./scripts/deploy-locally.sh` | Local Python only |
-| `./scripts/start.sh` | Start local server (no browser) |
-| `./scripts/test.sh` | Platform + syntax checks |
+| `./deploy-locally.sh` | Build and start via Docker |
+| `npm run attest` | Regenerate AI attestation badge |
 
-**`deploy.sh` flags:** `--docker`, `--local`, `--stop`, `--detach`, `--no-build`, `--no-open`, `--smoke`
+**Flags:** `--stop`, `--build`, `--no-build`, `--detach`, `--no-open`
 
 ## API
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/` | GET | Web UI |
-| `/health` | GET | Server status |
+| `/live` | GET | Process up (container running) |
+| `/health` | GET | Model ready (503 while loading) |
 | `/api/voices` | GET | List preset voices |
 | `/voices/<name>.<ext>` | GET | Preset voice file |
 | `/tts/stream` | POST | SSE sentence streaming |
@@ -124,8 +104,7 @@ The Chatterbox model downloads on first run (Docker volume `huggingface-cache`, 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `8004` | Server port |
-| `TTS_DEVICE` | auto | `cuda`, `mps` (Apple Silicon), or `cpu` |
-| `USE_GPU` | auto | `1`/`0` to force Docker GPU mode |
+| `USE_GPU` | auto | `1`/`0` to force GPU overlay on/off (Linux only) |
 | `CB_EXAGGERATION` | `0.5` | Expressiveness (0–2) |
 | `CB_CFG_WEIGHT` | `0.5` | Guidance weight (0–1) |
 | `CB_TEMPERATURE` | `0.8` | Sampling temperature |
@@ -134,22 +113,14 @@ The Chatterbox model downloads on first run (Docker volume `huggingface-cache`, 
 
 ```
 voice-clone/
-├── install / install.ps1
+├── deploy-locally.sh      # start via Docker (auto CPU/GPU)
 ├── package.json           # attest-client for AI attestation
-├── Dockerfile
-├── docker-compose.yml
-├── docker-compose.gpu.yml
+├── Dockerfile             # multi-target: cpu | cuda
+├── docker-compose.yml     # base service
+├── docker-compose.gpu.yml # GPU overlay (Linux + NVIDIA)
 ├── server/tts_server.py
 ├── server/voices/
 ├── web/index.html
 └── scripts/
-    ├── lib/common.sh      # cross-platform helpers
-    ├── deploy.sh          # unified start
-    ├── deploy-docker.sh
-    ├── deploy-locally.sh
-    ├── deploy.ps1         # Windows
-    ├── install-deps.sh
-    ├── attest.mjs           # npm run attest
-    ├── start.sh
-    └── test.sh
+    └── attest.mjs         # npm run attest
 ```

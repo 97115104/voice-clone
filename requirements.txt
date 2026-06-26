@@ -1,7 +1,6 @@
 # setuptools 82+ removed pkg_resources; resemble-perth still needs it
 setuptools<82
 chatterbox-tts
-torchaudio
 soundfile
 fastapi
 uvicorn[standard]

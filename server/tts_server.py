@@ -12,6 +12,7 @@ Install:
   pip install -r requirements.txt
 """
 import base64, hashlib, io, json, os, re, subprocess, tempfile, threading, time
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import soundfile as sf
@@ -28,7 +29,20 @@ ROOT = Path(__file__).resolve().parent
 VOICES_DIR = ROOT / "voices"
 WEB_DIR = ROOT.parent / "web"
 
-app = FastAPI(title="Voice Clone", version="1.0.0")
+_NO_CACHE = {"Cache-Control": "no-store, no-cache, must-revalidate", "Pragma": "no-cache"}
+
+
+def _html_response(path: Path) -> FileResponse:
+    return FileResponse(path, headers=_NO_CACHE)
+
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    threading.Thread(target=_load_model, name="model-loader", daemon=True).start()
+    yield
+
+
+app = FastAPI(title="Voice Clone", version="1.0.0", lifespan=_lifespan)
 
 _ready = threading.Event()
 _load_error: str | None = None
@@ -345,6 +359,11 @@ async def stream(req: TTSRequest):
     return StreamingResponse(generate(), media_type="text/event-stream")
 
 
+@app.get("/live")
+async def live():
+    return {"status": "up"}
+
+
 @app.get("/health")
 async def health():
     if _load_error:
@@ -410,15 +429,16 @@ async def index():
     if not _ready.is_set():
         loading_path = WEB_DIR / "loading.html"
         if loading_path.exists():
-            return FileResponse(loading_path)
+            return _html_response(loading_path)
         return Response(
             content=_LOAD_MESSAGE,
             media_type="text/plain",
             status_code=503,
+            headers=_NO_CACHE,
         )
     index_path = WEB_DIR / "index.html"
     if index_path.exists():
-        return FileResponse(index_path)
+        return _html_response(index_path)
     return Response(content="Voice clone server running. Add web/index.html for the UI.", media_type="text/plain")
 
 
@@ -429,5 +449,4 @@ if VOICES_DIR.exists():
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8004))
-    threading.Thread(target=_load_model, name="model-loader", daemon=True).start()
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

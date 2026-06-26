@@ -1,15 +1,9 @@
-# GPU override — use: docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build
+# GPU overlay — applied automatically on Linux when NVIDIA + Docker GPU runtime detected.
 services:
   voice-clone:
+    image: voice-clone:gpu
     build:
-      args:
-        TORCH_INDEX: https://download.pytorch.org/whl/cu124
+      target: cuda
+    gpus: all
     environment:
       TTS_DEVICE: cuda
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
