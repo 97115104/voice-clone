@@ -147,6 +147,14 @@ async def default_voice():
     return Response(content="fry", media_type="text/plain")
 
 
+@app.get("/favicon.svg")
+async def favicon():
+    path = WEB_DIR / "favicon.svg"
+    if path.exists():
+        return FileResponse(path, media_type="image/svg+xml")
+    raise HTTPException(status_code=404, detail="Favicon not found")
+
+
 @app.get("/attestation.json")
 async def attestation():
     path = WEB_DIR / "attestation.json"
