@@ -134,6 +134,37 @@ The main web UI at `/` auto-configures a local bootstrap API key on first load. 
 
 API keys use the prefix `sk-voice-`. A separate bootstrap key (`sk-voice-local-…`) is created automatically for the local web UI.
 
+## Sharing access with a client or agent
+
+Give them **two things**:
+
+1. **API base URL** — your tunnel URL + `/v1`  
+   Example: `https://pharmacology-banners-fri-absorption.trycloudflare.com/v1`
+
+2. **API key** — create at `/admin` → API keys (`sk-voice-…`)
+
+Do **not** use `/api` for remote clients — that path is for the local web UI. The OpenAI-compatible API lives under `/v1`.
+
+### List available voices
+
+```bash
+curl https://YOUR-TUNNEL.trycloudflare.com/v1/models \
+  -H "Authorization: Bearer sk-voice-YOUR_KEY"
+```
+
+Or `GET /v1/voices` for a richer list (presets + uploads). Use each voice's `id` as the `model` field in speech requests. Preset examples: `fry`, `trump`, `obama`. Uploaded voices use ids like `voice-a1b2c3d4e5f6`.
+
+### Stream speech
+
+```bash
+curl -N https://YOUR-TUNNEL.trycloudflare.com/v1/audio/speech \
+  -H "Authorization: Bearer sk-voice-YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"fry","input":"Hello world.","stream":true}'
+```
+
+The admin dashboard at `/admin` shows the API base URL and copyable agent instructions when a tunnel is active.
+
 ## OpenAI-compatible API
 
 Base URL: `http://localhost:8004/v1` (or `https://YOUR-TUNNEL.trycloudflare.com/v1` when using a tunnel).

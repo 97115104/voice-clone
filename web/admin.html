@@ -94,6 +94,30 @@
       color: var(--lime);
     }
     .tunnel-url { color: var(--lime); word-break: break-all; }
+    .api-url { color: var(--lime); word-break: break-all; font-size: 0.875rem; }
+    .integration-block {
+      background: var(--bg);
+      border: 1px solid var(--stroke);
+      padding: 0.75rem;
+      margin-top: 0.75rem;
+      font-size: 0.7rem;
+      line-height: 1.5;
+      color: var(--muted);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .endpoint-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--stroke);
+      font-size: 0.75rem;
+    }
+    .endpoint-row:last-child { border-bottom: none; }
+    .endpoint-label { color: var(--faint); min-width: 5rem; }
+    .endpoint-value { color: var(--lime); word-break: break-all; flex: 1; }
     .panel { display: none; }
     .panel.active { display: block; }
     .login-wrap { max-width: 24rem; margin: 4rem auto; }
@@ -134,12 +158,27 @@
           <div id="modelStatus" style="margin-top:0.5rem">loading…</div>
         </div>
         <div class="card">
-          <div class="meta">Cloudflare tunnel URL</div>
+          <div class="meta">Cloudflare tunnel URL (public site)</div>
           <div id="tunnelUrl" class="tunnel-url" style="margin-top:0.5rem">—</div>
           <div style="margin-top:0.75rem" class="row-actions">
-            <button id="copyTunnelBtn" class="btn small" type="button">copy URL</button>
+            <button id="copyTunnelBtn" class="btn small" type="button">copy tunnel URL</button>
           </div>
-          <div class="meta" style="margin-top:0.75rem">Remote API base: <span id="apiBase">—</span></div>
+        </div>
+        <div class="card">
+          <div class="meta">API base URL — give this + an API key to remote clients</div>
+          <div id="apiBase" class="api-url" style="margin-top:0.5rem">—</div>
+          <div class="meta" style="margin-top:0.5rem">Use <code style="color:var(--lime)">/v1</code> (OpenAI-compatible). Not <code>/api</code> — that is for the local web UI only.</div>
+          <div style="margin-top:0.75rem" class="row-actions">
+            <button id="copyApiBaseBtn" class="btn small" type="button">copy API base URL</button>
+          </div>
+          <div id="endpointList" style="margin-top:1rem"></div>
+        </div>
+        <div class="card">
+          <div class="meta">Agent / client instructions (copy &amp; share)</div>
+          <div id="agentInstructions" class="integration-block">loading…</div>
+          <div style="margin-top:0.75rem">
+            <button id="copyInstructionsBtn" class="btn small" type="button">copy instructions</button>
+          </div>
         </div>
       </div>
 
@@ -229,14 +268,62 @@
       document.querySelectorAll(".panel").forEach(p => p.classList.toggle("active", p.id === `tab-${name}`));
     }
 
+    function publicOrigin(tunnel) {
+      if (tunnel && tunnel !== "—") return tunnel.replace(/\/$/, "");
+      return window.location.origin;
+    }
+
+    function buildAgentInstructions(apiBase) {
+      return `Voice Clone API integration
+
+API base URL: ${apiBase}
+Authentication: Authorization: Bearer sk-voice-YOUR_KEY
+
+1) List available voices (use the "id" or "name" as model):
+   GET ${apiBase}/models
+   GET ${apiBase}/voices
+
+2) Stream speech (sentence-by-sentence SSE):
+   POST ${apiBase}/audio/speech
+   Content-Type: application/json
+   {"model":"fry","input":"Text to speak.","stream":true}
+
+   Response: text/event-stream chunks with base64 WAV audio per sentence, ending with data: [DONE]
+
+3) Non-streaming speech (single audio file):
+   POST ${apiBase}/audio/speech
+   {"model":"fry","input":"Text to speak.","response_format":"wav"}
+
+Preset voices use the name as model (e.g. fry, trump, obama).
+Uploaded voices use their id (e.g. voice-a1b2c3d4e5f6).`;
+    }
+
+    function renderEndpoints(apiBase) {
+      const list = $("endpointList");
+      const rows = [
+        ["List voices", `${apiBase}/models`],
+        ["List voices", `${apiBase}/voices`],
+        ["Stream TTS", `${apiBase}/audio/speech`],
+        ["Upload voice", `${apiBase}/voices`],
+      ];
+      list.innerHTML = rows.map(([label, url]) => `
+        <div class="endpoint-row">
+          <span class="endpoint-label">${label}</span>
+          <span class="endpoint-value">${url}</span>
+        </div>`).join("");
+    }
+
     async function loadDashboard() {
       const res = await fetch("/setup/status");
       const data = await res.json();
       const model = data.model || {};
       $("modelStatus").textContent = model.ready ? "ready" : (model.error || "loading…");
       const tunnel = data.tunnel_url || "—";
-      $("tunnelUrl").textContent = tunnel;
-      $("apiBase").textContent = tunnel !== "—" ? `${tunnel}/v1` : "start deploy-locally.sh tunnel";
+      $("tunnelUrl").textContent = tunnel !== "—" ? tunnel : `${window.location.origin} (local — start tunnel for public URL)`;
+      const apiBase = `${publicOrigin(tunnel !== "—" ? tunnel : null)}/v1`;
+      $("apiBase").textContent = apiBase;
+      renderEndpoints(apiBase);
+      $("agentInstructions").textContent = buildAgentInstructions(apiBase);
     }
 
     async function loadKeys() {
@@ -369,8 +456,10 @@
     $("copyKeyBtn").onclick = () => navigator.clipboard.writeText($("newKeyValue").textContent);
     $("copyTunnelBtn").onclick = () => {
       const url = $("tunnelUrl").textContent;
-      if (url && url !== "—") navigator.clipboard.writeText(url);
+      if (url && !url.includes("(local")) navigator.clipboard.writeText(url.split(" ")[0]);
     };
+    $("copyApiBaseBtn").onclick = () => navigator.clipboard.writeText($("apiBase").textContent);
+    $("copyInstructionsBtn").onclick = () => navigator.clipboard.writeText($("agentInstructions").textContent);
 
     $("uploadVoiceBtn").onclick = async () => {
       const file = $("voiceFile").files?.[0];
