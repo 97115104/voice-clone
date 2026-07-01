@@ -23,7 +23,7 @@ services:
       - ./data:/app/data
       - ./web:/app/web:ro
       - ./server:/app/server:ro
-    restart: unless-stopped
+    restart: no
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8004/health | grep -q '\"status\":\"ok\"'"]
       interval: 15s
